@@ -75,7 +75,7 @@ except Exception as error:
 
 # Initialize ADS1115 on meltstake PCB.
 try:
-    battery_ads = ADS1115(22)
+    battery_ads = ADS1115(13)
     battery_ads.VOLTAGE = [0,0,0,0]
     def monitor_battADS():
         while True:
@@ -87,7 +87,7 @@ try:
                     pass
     Thread(daemon=True, target=monitor_battADS).start()
 except Exception as error:
-    LOG_STRING = "Error encountered while initializing ADS1115 driver on i2c bus 22:, " + str(error)
+    LOG_STRING = "Error encountered while initializing ADS1115 driver on i2c bus 13:, " + str(error)
     logging.error(LOG_STRING)
     
 # initialize navigator ADS
@@ -879,7 +879,7 @@ class Sensors:
 
     class Pressure: 
         def init(self) -> bool:
-            self.sensor = ms5837.MS5837_30BA(22)
+            self.sensor = ms5837.MS5837_30BA(13)
             if not self.sensor.init():  # initialize sensor
                 logging.info("Pressure sensor could not be initialized")
                 return False
