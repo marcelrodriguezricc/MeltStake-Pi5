@@ -341,6 +341,7 @@ apt-get install -y \
   git \
   i2c-tools \
   python3-smbus2 \
+  swig \
   && ok "System dependencies installed"
 
 # Project paths
@@ -554,3 +555,6 @@ else
 fi
 
 log "Interface configuration complete (reboot required)"
+
+# ----- DIRECTORY PARAMETERS -----
+sudo chown -R pi:pi $PROJECT_DIR
