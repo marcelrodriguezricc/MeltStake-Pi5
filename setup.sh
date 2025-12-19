@@ -337,11 +337,15 @@ apt-get install -y \
   python3-pip \
   python3-venv \
   python3-dev \
-  rsyslog \
+  python3-setuptools \
+  python3-wheel \
+  build-essential \
+  swig \
   git \
   i2c-tools \
   python3-smbus2 \
-  swig \
+  liblgpio1 \
+  liblgpio-dev \
   && ok "System dependencies installed"
 
 # Project paths
