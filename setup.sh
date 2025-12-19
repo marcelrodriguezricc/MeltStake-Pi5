@@ -344,7 +344,7 @@ apt-get install -y \
   && ok "System dependencies installed"
 
 # Project paths
-PROJECT_DIR="/home/pi/setup_tests"
+PROJECT_DIR="/home/pi/MeltStake-Pi5"
 VENV_DIR="$PROJECT_DIR/venv"
 REQ_FILE="$PROJECT_DIR/requirements.txt"
 

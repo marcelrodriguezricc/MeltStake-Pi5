@@ -1,0 +1,22 @@
+# Core numerical / data
+numpy
+pandas
+pandas-stubs
+matplotlib
+
+# Adafruit / hardware
+Adafruit-Blinka
+adafruit-circuitpython-ads1x15
+adafruit-circuitpython-pca9685
+adafruit-circuitpython-servokit
+adafruit-extended-bus
+spidev
+smbus2
+
+# Utilities
+jinja2
+pypdf2
+pyyaml
+pynmea2
+unhandled_exit
+lgpio
