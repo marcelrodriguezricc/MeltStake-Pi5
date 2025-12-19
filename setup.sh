@@ -388,6 +388,17 @@ else
   warn "requirements.txt not found at $REQ_FILE (skipping Python dependencies)"
 fi
 
+# GPIO backend fix for circuitpython
+log "Ensuring Pi 5-compatible GPIO backend (remove legacy RPi.GPIO, install rpi-lgpio)"
+
+"$VENV_DIR/bin/python" -m pip uninstall -y RPi.GPIO \
+  && ok "Removed RPi.GPIO from virtual environment" \
+  || warn "RPi.GPIO not installed in virtual environment (skipping uninstall)"
+
+"$VENV_DIR/bin/python" -m pip install -U rpi-lgpio \
+  && ok "Installed/updated rpi-lgpio in virtual environment" \
+  || { warn "Failed to install rpi-lgpio"; exit 1; }
+  
 # Print virtual environment Python version
 log "Python version in virutal environment:"
 "$VENV_DIR/bin/python" --version
