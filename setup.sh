@@ -818,6 +818,12 @@ else
   exit 1
 fi
 
+# Create data directory on NVMe SSD
+echo "Initializing "data" directory"
+sudo mkdir -p "$MOUNT_POINT/data"
+chown -R "$SUDO_USER:$SUDO_USER" "$MOUNT_POINT/data"
+echo ""data" directory created"
+
 # Final banner
 echo "------------------------------------------------------------"
 echo "SETUP COMPLETE, PLEASE REBOOT"

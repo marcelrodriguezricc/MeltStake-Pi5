@@ -21,7 +21,7 @@ from pathlib import Path
 PROJECT_DIR = Path.home() / "meltstake-sonar"
 VENV_DIR = PROJECT_DIR / "venv"
 CONFIG_FILE = "default_config.toml"
-DATA_DIR = "/dev/nvme0n1p1" / "data"
+DATA_DIR = "/mnt/nvme/data"
 # ---------------------------------------------------------------------------
 
 
