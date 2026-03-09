@@ -582,7 +582,7 @@ log "Interface configuration complete (reboot required)"
 
 # ----- DIRECTORY PARAMETERS -----
 
-# Exit bash if a command fails
+# Exit bash if any commands after this point fail
 set -euo pipefail
 
 # Service Script directory path
@@ -643,7 +643,8 @@ EOM
   chown -R "$SUDO_USER:$SUDO_USER" "$LOG_FILE"
 
   # Dynamically write shebang for sudo user
-  sed -i "1s|.*|#!/home/$SUDO_USER/meltstake/venv/bin/python" "$SERVICE_DIR/$SyslogIdentifier.py"
+  sed -i "1s|.*|#!/home/$SUDO_USER/meltstake/venv/bin/python|" "$SERVICE_DIR/$SyslogIdentifier.py"
+
 
   # Enable service script
   sudo systemctl enable $SyslogIdentifier.service
@@ -661,7 +662,7 @@ for s in $scripts; do
 done
 
 # Print success for building service files
-echo "SUCCESS: Service files built and verified."
+echo "SUCCESS: Service files built and verified."w
 
 # Melt Stake service file path
 LOG_FILE="/var/log/meltstake.log"
@@ -765,7 +766,7 @@ echo "SUCCESS: External RTC services installed. On future boots, system time wil
 
 # ----- MOUNT NVME SSD -----
 
-echo "Mounting NVME SSD..."
+echo "Mounting NVMe SSD..."
 
 NVME_PART="/dev/nvme0n1p1"
 MOUNT_POINT="/mnt/nvme"
@@ -773,8 +774,24 @@ MOUNT_POINT="/mnt/nvme"
 # Ensure mount point exists
 sudo mkdir -p "$MOUNT_POINT"
 
+# Create partition if it doesn't exist
+if [ ! -b "$NVME_PART" ]; then
+  echo "Partitioning NVMe SSD..."
+  sudo parted /dev/nvme0n1 --script mklabel gpt mkpart primary ext4 0% 100%
+  sudo partprobe /dev/nvme0n1
+fi
+
+# Format if no filesystem exists
+if ! sudo blkid -s TYPE -o value "$NVME_PART" 2>/dev/null | grep -q .; then
+  echo "Formatting NVMe SSD..."
+  sudo mkfs.ext4 -F "$NVME_PART"
+fi
+
+# Ensure kernel is aware of NVMe partition table
+sudo partprobe "$NVME_PART" 2>/dev/null || true
+
 # Get UUID of NVMe partition
-NVME_UUID=$(sudo blkid -s UUID -o value "$NVME_PART")
+NVME_UUID=$(sudo blkid -s UUID -o value "$NVME_PART" 2>/dev/null) || true
 
 # Throw an error if UUID could not be determined
 if [ -z "$NVME_UUID" ]; then
@@ -791,7 +808,7 @@ else
 fi
 
 # Mount all
-sudo mount -a
+sudo mount -a || true
 
 # Verify mount
 if mountpoint -q "$MOUNT_POINT"; then

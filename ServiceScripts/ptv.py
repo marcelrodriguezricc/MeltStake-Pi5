@@ -21,7 +21,7 @@ from pathlib import Path
 PROJECT_DIR = Path.home() / "meltstake-ptv"
 VENV_DIR = PROJECT_DIR / "venv"
 CONFIG_FILE = "default_config.toml"
-DATA_DIR = PROJECT_DIR / "data"
+DATA_DIR = "/dev/nvme0n1p1" / "data"
 # ---------------------------------------------------------------------------
 
 
