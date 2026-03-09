@@ -606,7 +606,7 @@ echo "SUCCESS: Permissions for project and service script directories configured
 # ----- SERVICE SCRIPTS -----
 
 # List of service scripts
-scripts='heartbeat LeakDetection'
+scripts='heartbeat LeakDetection ptv sonar'
 
 # For each script...
 for SyslogIdentifier in $scripts; do
@@ -641,6 +641,9 @@ EOM
 
   # Configure permission for log file
   chown -R "$SUDO_USER:$SUDO_USER" "$LOG_FILE"
+
+  # Dynamically write shebang for sudo user
+  sed -i "1s|.*|#!/home/$SUDO_USER/meltstake/venv/bin/python" "$SERVICE_DIR/$SyslogIdentifier.py"
 
   # Enable service script
   sudo systemctl enable $SyslogIdentifier.service

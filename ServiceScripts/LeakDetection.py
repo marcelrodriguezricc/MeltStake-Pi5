@@ -1,4 +1,4 @@
-#!/home/pi/MeltStake-Pi5/venv/bin/python
+#!/home/pi/meltstake/venv/bin/python
 # pyright: reportMissingImports=false
 import board
 from digitalio import DigitalInOut, Direction, Pull  # GPIO module
