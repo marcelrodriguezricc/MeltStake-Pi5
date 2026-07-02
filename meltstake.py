@@ -459,8 +459,8 @@ class Drill:
             Count pulses of reed sensor on output shaft (1 pulse/rotation)
             Algorithm based on debounce.c written by Kenneth A. Kuhn
         """
-        DEBOUNCE_TIME = 0.003
         SAMPLE_FREQUENCY = 1000
+        DEBOUNCE_TIME = 3/SAMPLE_FREQUENCY
         MAXIMUM = DEBOUNCE_TIME * SAMPLE_FREQUENCY
         integrator = 0
         output = 0

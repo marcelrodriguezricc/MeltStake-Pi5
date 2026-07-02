@@ -148,6 +148,9 @@ def RELEASE(arguments=None):
     """
     global stopauto
     
+    max_rotations = 500 # maximum number of rotations allowed before exiting RELEASE
+    rotations_init = data.ROT
+    
     logging.info("begining RELEASE operation")
     
     # disable auto-release
@@ -182,26 +185,24 @@ def RELEASE(arguments=None):
     if underwater:
         Thread(daemon=True, target=DRILL, args=(drill_out,)).start()
         motors[0].auto_release_OVRD = True
-    while underwater and not stopauto:
-            
+    while underwater and not stopauto and max(np.array(data.ROT) - np.array(rotations_init)) < max_rotations:
+             
         time.sleep(wait_time)
 
         try:
             # every 20 seconds check if # of rotations are increasing:
             if loops*wait_time > 20: 
                 loops = 0
-                # [Rread, rotdot0, rotdot1] = get_saved_data("Rotations", 2)
+                # [Rread, delta_rot0, delta_rot1] = get_saved_data("Rotations", 2)
                 try:
-                    rot0 = data.ROT
+                    rotations_t0 = data.ROT
                     time.sleep(1)
-                    rot1 = data.ROT
-                    rotdot0 = rot1[0] - rot0[0]
-                    rotdot1 = rot1[1] - rot0[1]
+                    delta_rotations = np.array(data.ROT) - np.array(rotations_t0)
                     Rread = True
                 except Exception:
                     Rread = False
                     
-                if (rotdot0 == 0 or rotdot1 == 0) or not Rread: #if either stake is stuck
+                if (np.any(delta_rotations == 0)) or not Rread: #if either stake is stuck
                     # attempt to drill in 5 turns (this sometimes helps loosen the ice)
                     # alternate between left, right, and both drilling in
                     in_attempts = (in_attempts + 1) % 3
