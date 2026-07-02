@@ -262,7 +262,7 @@ class LeakDetection:
         This value is set in LeakState.txt by LeakDetection.service
         """
         while True:
-            with open('/home/pi/MeltStake-Pi5/ServiceScripts/LeakState.txt', "r") as f: 
+            with open('/home/pi/meltstake/ServiceScripts/LeakState.txt', "r") as f: 
                 self.state = eval(f.readline())
             time.sleep(0.25)
             

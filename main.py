@@ -1,4 +1,4 @@
-#!/home/pi/MeltStake-Pi5/venv/bin/python
+#!/home/pi/meltstake/venv/bin/python
 # pyright: reportMissingImports=false
 import os
 import time

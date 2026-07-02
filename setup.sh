@@ -434,7 +434,7 @@ install_python_repo \
 
 # Blue Robotics PCA PWM Driver
 install_python_repo \
-  "https://github.com/bluerobotics/pca9685-python" \
+  "https://github.com/noahaosman/pca9685-python" \
   "pca9685-python" "PCA9685 PWM Controller" \
   || warn "Continuing after failure: pca9685-python"
 

@@ -9,13 +9,13 @@ leak = DigitalInOut(board.D27)
 leak.direction = Direction.INPUT
 leak.pull = Pull.DOWN
 
-with open('/home/pi/MeltStake-Pi5/ServiceScripts/LeakState.txt', "w") as f:  
+with open('/home/pi/meltstake/ServiceScripts/LeakState.txt', "w") as f:  
     # write new data line
     f.write("False")
 
 while leak.value == False:
     time.sleep(0.25)
 
-with open('/home/pi/MeltStake-Pi5/ServiceScripts/LeakState.txt', "w") as f:  
+with open('/home/pi/meltstake/ServiceScripts/LeakState.txt', "w") as f:  
     # write new data line
     f.write("True")
