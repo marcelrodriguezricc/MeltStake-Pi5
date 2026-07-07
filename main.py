@@ -2,13 +2,10 @@
 # pyright: reportMissingImports=false
 import os
 import time
-import argparse
 import traceback
 import logging
-import time
 import argparse
 from threading import Thread
-import traceback
 
 from meltstake import Beacon
 import Operations
@@ -24,6 +21,7 @@ logging.basicConfig(level=logging.DEBUG, filename="/home/pi/data/meltstake.log",
 
 # Initialize beacon object
 beacon = Beacon()
+beacon.start()  # start beacon listening thread
 
 t_operation = Thread()  # initialize main thread variable
 known_commands = [attribute for attribute in dir(Operations) if \
@@ -59,19 +57,19 @@ while not Operations.battery.under_voltage and not Operations.leaksensor.state:
 
         ### Receive/transmit beacon messages
         if args.mode == 'debug':
-            beacon.recieved_msg = input("input: ")  # Terminal input for testing.
+            beacon.received_msg = input("input: ")  # Terminal input for testing.
 
-        if beacon.recieved_msg != '' or Operations.auto_release_flag[0]:
+        if beacon.received_msg != '' or Operations.auto_release_event.is_set():
             
-            if Operations.auto_release_flag[0]:
+            if Operations.auto_release_event.is_set():
                 msg = 'RELEASE'
-                Operations.auto_release_flag[0] = False
+                Operations.auto_release_event.clear()
             else:
-                msg = beacon.recieved_msg
+                msg = beacon.received_msg
                 
             msg = msg.upper()
 
-            beacon.transmit_msg = msg  # echo back the message
+            beacon.transmit(msg)# echo back the message
             
             msg_split = msg.split()
             command = msg_split[0]
@@ -103,33 +101,25 @@ while not Operations.battery.under_voltage and not Operations.leaksensor.state:
                     Operations.light.brightness = flt_in/100
                 except:
                     pass
-            
-            elif command == 'SONAR':
-                t_sonar = Thread(daemon=True, target=Operations.SONAR, args=(beacon, arguments,)).start()
 
             elif command in known_commands:  # any other commands will begin as a thread
-                t_new = Thread(daemon=True, target=eval("Operations."+command), args=(arguments, ))
+                func = getattr(Operations, command)
+                t_new = Thread(daemon=True, target=func, args=(arguments,))
                 
                 if not t_operation.is_alive():  # don't overwrite any currently running operations
                     t_operation = t_new
                     t_operation.start()
                 else:
-                    beacon.transmit_msg = "BUSY"
+                    beacon.transmit("BUSY")
                     print("operation currently running... send 'OFF' to kill")
             
-            beacon.recieved_msg = ''
+            beacon.received_msg = ''
 
 
     except Exception:
         logging.info("--- RUNTIME ERROR: ---")
         logging.info(traceback.format_exc())
         break
-
-# Shutdown Latte Panda before exiting code
-try:
-    Operations.SONAR("Shutdown")
-except Exception:
-    pass
 
 # set all motors & sublights to off before exiting code
 Operations.SOS_flag = True # this flag tells AUTONOMOUS operation subroutine to exit
@@ -156,9 +146,9 @@ Operations.SOS.blink(10)
 
 while True:
     try:
-        beacon.transmit_msg = "SOS"
+        beacon.transmit("SOS")
         time.sleep(5)
-        beacon.transmit_msg = SOS_msg
+        beacon.transmit(SOS_msg)
     except Exception:
         pass
     time.sleep(5)

@@ -3,7 +3,7 @@ import logging
 import os
 import time
 import numpy as np
-from threading import Thread
+from threading import Thread, Event
 import traceback
 from datetime import datetime
 
@@ -14,11 +14,16 @@ logging.basicConfig(level=logging.DEBUG, filename="/home/pi/data/meltstake.log",
                     format="%(asctime)-15s %(levelname)-8s %(message)s")
 
 motors = [ms.Drill(0), ms.Drill(1)]
+for motor in motors: # start threads
+    motor.start()
 battery = ms.Battery()
+battery.start()
 limitswitch = ms.LimitSwitch()
+limitswitch.start()
 data = ms.Sensors(battery, motors, limitswitch)
 light = ms.SubLight()
 leaksensor = ms.LeakDetection()
+leaksensor.start()
 heartbeat = ms.LED(25)
 heartbeat.blink()
 SOS = ms.LED(11)
@@ -29,7 +34,7 @@ SOS_flag = False
 stopauto = True
 num_motors = len(motors)
 max_speed = 0.6
-auto_release_flag = [False]
+auto_release_event = Event()
 auto_release_thread = Thread()
 
 def DRILL(target_turns):  
@@ -39,7 +44,7 @@ def DRILL(target_turns):
         target_turns (int): Target number of revolutions. Negative for CCW, Positive for CW.
     """
     global disarm
-    global auto_release_flag
+    global auto_release_event
     global auto_release_thread
        
     #start new auto release timer thread
@@ -259,14 +264,15 @@ def AR_OVRD(state):
     except Exception:
         pass
     
-def AR_RESET(arguments=None): # should this start the countdown again? Currently just exits the AR count-down loop
-    
+def AR_RESET(arguments=None):
+    global auto_release_thread, auto_release_event
     if not motors[0].auto_release_OVRD:
         try:
             motors[0].auto_release_kill = True
             time.sleep(0.05)
-            auto_release_thread_new = Thread(daemon=True, target=motors[0].auto_release_timer, args=(data.PT[0], auto_release_flag,))
-            if not auto_release_thread.is_alive():  # make sure any prior counters are dead before starting thread
+            auto_release_event = Event()  # fresh event
+            auto_release_thread_new = Thread(daemon=True, target=motors[0].auto_release_timer, args=(auto_release_event,))
+            if not auto_release_thread.is_alive():
                 auto_release_thread = auto_release_thread_new
                 auto_release_thread.start()
         except Exception as e:
@@ -305,52 +311,6 @@ def LS_OVRD(state):
             limitswitch.override = False
     except Exception:
         pass
-
-def SONAR(beacon, msg):
-    """Communication with 881a Sonar
-
-    Args:
-        beacon (Beacon): object created by "Beacon" class
-        msg (str): message. Options:
-            - Deploy :: Begin sonar data collection
-                - parameter :: Sonar configuration code
-            - Undeploy :: Stop sonar data collection
-            - Shutdown :: Shutdown LattePanda
-            
-    """
-    
-    command = ''
-    parameter = None
-    if len(msg) > 0:
-        command = msg[0]
-    if len(msg) > 1:
-        parameter = msg[1]
-
-    with ms.SonarCommChannel() as comm:
-        if command == 'DEPLOY':
-            if not parameter:
-                parameter = "scan"
-            command = {"Command": "Deploy", "Deploy": parameter}
-            comm.sendCommand(command)
-            response = comm.receiveStatus()
-
-        elif command == 'UNDEPLOY':
-            command = {"Command": "Undeploy"}
-            comm.sendCommand(command)
-            response = comm.receiveStatus()
-
-        elif command == 'SHUTDOWN':
-            command = {"Command": "Shutdown"}
-            comm.sendCommand(command)
-            response = comm.receiveStatus()
-        
-        else:
-            response = {"Response":"Uknown request"}
-        
-        
-        if response:
-            beacon.transmit_msg = "PANDA: " + response["Response"]
-    
     
 def SETROT(set_turns):  
     """ Manually overwrite rotation tracking number
@@ -413,11 +373,11 @@ def DATA(beacon, arguments=None):
         logging.info("Attempting to transmit "+data_req+" data ... ")
         time.sleep(1)
         try:
-            data_list = eval("data."+data_req)  # get most recent measurement
+            data_list = getattr(data, data_req)  # get most recent measurement
             str_dat = [ f"{data_point:.3f}" if isinstance(data_point, float) else str(data_point) \
                         for data_point in data_list]
             msg = data_req + " " + ' '.join(str_dat)
-            beacon.transmit_msg = msg  # transmit requested data
+            beacon.transmit(msg)  # transmit requested data
         except Exception as e:
             logging.info("Data transmission failed")
             logging.info(traceback.format_exc())

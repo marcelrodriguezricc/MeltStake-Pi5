@@ -129,7 +129,8 @@ class LED:
     
     def __init__(self, pin_no=__pin_no):
         self.pin_no = pin_no
-        self.__led = DigitalInOut(eval("board.D"+str(self.pin_no)))
+        pin = getattr(board, f"D{self.pin_no}")
+        self.__led = DigitalInOut(pin)
         self.__led.direction = Direction.OUTPUT
     
     @property
@@ -141,10 +142,8 @@ class LED:
     def pin_no(self, value=int) -> bool:
         if 1 <= value <= 26:
             self.__pin_no = value
-            return True
         else:
             logging.warning("GPIO pin number %s undefined on Raspberry Pi 4.", str(value))
-            return False
     
     def off(self):
         self.__led.value = True
@@ -172,15 +171,17 @@ class Battery:
     """
     Class for monitoring battery voltage
     """
-    __voltage = 0.0
-    __voltage_limit = 13.5
-    __under_voltage = False
 
-    def __init__(self, voltage_limit=__voltage_limit):
+    def __init__(self, voltage_limit=13.5):
+        self.__voltage = 0.0
+        self.__under_voltage = False
         self.voltage_limit = voltage_limit
+        self._thread = None
         
-        t_monitor_voltage = Thread(target=self.monitor_voltage, daemon=True)
-        t_monitor_voltage.start()
+    def start(self):
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = Thread(target=self.monitor_voltage, daemon=True)
+            self._thread.start()
         
     @property
     def voltage(self):
@@ -192,11 +193,9 @@ class Battery:
         """ Sets latest measured voltage """
         if 0 <= value <= 16.9:
             self.__voltage = value
-            return True
         else:
             LOG_STRING = "Battery voltage reading outside of expected limits: " + str(value)
             logging.warning(LOG_STRING)
-            return False
             
     @property
     def voltage_limit(self):
@@ -207,12 +206,10 @@ class Battery:
     def voltage_limit(self, value:float) -> bool:
         """ Sets the voltage limit """
         if 12.8 <= value <= 16.8:
-            self.__voltage = value
-            return True
+            self.__voltage_limit = value
         else:
             LOG_STRING = "Minimum battery voltage limit set to a value outside of expected range:, " + str(value)
             logging.warning(LOG_STRING)
-            return False
             
     @property
     def under_voltage(self):
@@ -223,7 +220,6 @@ class Battery:
     def under_voltage(self, value:bool) -> bool:
         """ Sets battery charge state """
         self.__under_voltage = value
-        return True
     
     # -----------------------------
     
@@ -239,13 +235,16 @@ class Battery:
             time.sleep(0.25)
     
 
-class LeakDetection:
-    
-    __state = False
+class LeakDetection:  
 
     def __init__(self):
-        t_monitor_leak = Thread(target=self.monitor_leak, daemon=True)
-        t_monitor_leak.start()
+        self.__state = False
+        self._thread = None
+        
+    def start(self):
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = Thread(target=self.monitor_leak, daemon=True)
+            self._thread.start()
     
     @property
     def state(self):
@@ -262,8 +261,8 @@ class LeakDetection:
         This value is set in LeakState.txt by LeakDetection.service
         """
         while True:
-            with open('/home/pi/meltstake/ServiceScripts/LeakState.txt', "r") as f: 
-                self.state = eval(f.readline())
+            with open('/home/pi/meltstake/ServiceScripts/LeakState.txt') as f:
+                self.state = f.readline().strip() == "True"
             time.sleep(0.25)
             
 
@@ -271,30 +270,38 @@ class Drill:
     """
     Provides a model for Blue Robotics T200 gearbox-reduced ice screw
     """
-    __ID_number = 0
-    __speed = 0
-    __current_speed = 1 # set high so motors will initialize to zero speed
-    __current_limit = 14
-    __current_draw = 0
-    __overdrawn = False
-    __pulses = 0
 
-    def __init__(self, ID_number, current_limit=__current_limit):
-        # initialize drill object
-        self.ID_number = ID_number
-        self.current_limit = current_limit
+    def __init__(self, ID_number=0, current_limit=14):
+        self.__ID_number = ID_number
+        self.__speed = 0
+        self.__current_speed = 1
+        self.__current_limit = current_limit
+        self.__current_draw = 0
+        self.__overdrawn = False
+        self.__pulses = 0
+        
         self.auto_release_OVRD = False
         self.auto_release_kill = False
         
-        # start threads --------------------
-        t_speed_manager = Thread(target=self.update_speed, daemon=True)
-        t_speed_manager.start()
+        self._threads = None
+        
+    def start(self):
+        if not hasattr(self, "_threads") or self._threads is None:
+            self._threads = {}
 
-        t_current_monitor = Thread(target=self.monitor_current, daemon=True)
-        t_current_monitor.start()
+        def start_thread(name, target):
+            t = self._threads.get(name)
 
-        t_count_pulses = Thread(target=self.count_pulses, daemon=True)
-        t_count_pulses.start()
+            if t is None or not t.is_alive():
+                t = Thread(target=target, daemon=True)
+                t.start()
+                self._threads[name] = t
+
+        start_thread("speed", self.update_speed)
+        start_thread("current", self.monitor_current)
+        start_thread("pulses", self.count_pulses)
+    
+    
 
     @property
     def ID_number(self):
@@ -306,10 +313,8 @@ class Drill:
         """ sets the motor ID_number """
         if 0 <= value <= 1:
             self.__ID_number = value
-            return True
         else:
             logging.error("Invalid motor ID_number: %s. Value must be 0 or 1.", str(value))
-            return False
     
     @property
     def speed(self):
@@ -321,10 +326,8 @@ class Drill:
         """ Sets the motor target speed """
         if -1 < value < 1:
             self.__speed = value
-            return True
         else:
             logging.error("Invalid motor speed request: %s. Value must be between -1.0 and 1.0", str(value))
-            return False
         
     @property
     def current_speed(self):
@@ -336,10 +339,8 @@ class Drill:
         """Sets the current motor speed"""
         if -1 < value < 1:
             self.__current_speed = value
-            return True
         else:
             logging.error("Invalid motor speed: %s. Value must be between -1.0 and 1.0", str(value))
-            return False
     
     @property
     def current_limit(self):
@@ -351,10 +352,8 @@ class Drill:
         """ Sets the current limit (Amps) """
         if value > 0.:
             self.__current_limit = value
-            return True
         else:
             logging.error("Invalid curent limit: %s", str(value))
-            return False
     
     @property
     def current_draw(self):
@@ -364,7 +363,6 @@ class Drill:
     @current_draw.setter
     def current_draw(self, value:float) -> bool:
         self.__current_draw = abs(value)
-        return True
     
     @property
     def overdrawn(self):
@@ -375,7 +373,6 @@ class Drill:
     def overdrawn(self, value:bool) -> bool:
         """ sets the current limiting state """
         self.__overdrawn = value
-        return True
     
     @ property
     def pulses(self):
@@ -387,10 +384,8 @@ class Drill:
         """ Sets number of pulses """
         if value >= 0:
             self.__pulses = value
-            return True
         else:
             logging.error("Invalid pulse count: %s", str(value))
-            return False
     
     
     # ----------------------------------
@@ -400,47 +395,16 @@ class Drill:
         """
         while True:
             if abs(self.current_speed - self.speed) > 0.01:
-                mutex.acquire()
-                print(str(self.ID_number)+" Mutex aquired")
-                try:
-                    logging.info('writing speed '+str(self.speed)+' to motor #'+str(self.ID_number)+'. Current speed is '+str(self.current_speed))
-                    WRITE_DUTY_CYCLE(self.ID_number, self.speed)
-                    self.current_speed = self.speed
-                except Exception as e:
-                    logging.error("PWM write failed for motor "+str(self.ID_number))
-                    logging.error("ERROR : " + str(e))
-                mutex.release()
-                print(str(self.ID_number)+" Mutex released")
+                with mutex:
+                    try:
+                        print(str(self.ID_number)+" Mutex aquired")
+                        logging.info('writing speed '+str(self.speed)+' to motor #'+str(self.ID_number)+'. Current speed is '+str(self.current_speed))
+                        WRITE_DUTY_CYCLE(self.ID_number, self.speed)
+                        self.current_speed = self.speed
+                    except Exception as e:
+                        logging.error("PWM write failed for motor "+str(self.ID_number))
+                        logging.error("ERROR : " + str(e))
             time.sleep(0.05) 
-    
-    
-    def monitor_true_speed(self):
-        """ Not currently in use. Needs more de-bugging. """
-        min_reads = 4
-        while True:
-            pwm_last_measured = 0 
-            mutex.acquire()
-            for i in range(min_reads):
-                print(str(self.ID_number)+'::    mutey acquy')
-                try:
-                    pwm_measured = pca.pwm[self.ID_number]
-                    print(str(self.ID_number)+'::    '+str(i)+": "+str(pwm_measured)+" | "+str(pwm_last_measured))
-                    if i > 0 and pwm_measured != pwm_last_measured:
-                        print(str(self.ID_number)+'::    '+'incorrect read **************************************************')
-                        break
-                    elif i is min_reads-1:
-                        self.current_speed = (float(pwm_measured) - 1500) / 400
-                        print(str(self.ID_number)+'::    '+str((float(pwm_measured) - 1500) / 400))
-                except Exception as e:
-                    print(str(self.ID_number)+'::    '+'bad read **************************************************')
-                    logging.error("PWM read failed for motor "+str(self.ID_number))
-                    logging.error(str(e))
-                    break
-                pwm_last_measured = pwm_measured
-                print(str(self.ID_number)+'::    '+'mutey reley')
-                time.sleep(0.01)
-            mutex.release()
-            time.sleep(0.05)
     
     def monitor_current(self):
         """ Monitor current draw of motor, set speed to zero if it exceeds limit """
@@ -489,7 +453,7 @@ class Drill:
                 self.pulses = self.pulses + 1
             prior_output = output
 
-    def auto_release_timer(self, depth, release_flag):
+    def auto_release_timer(self, release_event):
         """
         Start a timer. At 5 minuntes trigger auto-release.
         This is a preventative measure for the failure mode of ROV comm loss while drilled into ice.
@@ -497,16 +461,21 @@ class Drill:
         """
         t0 = time.time()
         self.auto_release_kill = False
-        release_flag[0] = False
+        # ensure event is clear when starting
+        try:
+            release_event.clear()
+        except Exception:
+            pass
+        
         while True:
             t = time.time() - t0
             if t > 5*60:
-                release_flag[0] = True
+                release_event.set()
                 logging.info("Auto release initiated")
                 break
-            if self.auto_release_OVRD == True:
+            if self.auto_release_OVRD:
                 break
-            if self.auto_release_kill == True:
+            if self.auto_release_kill:
                 break
             time.sleep(0.01)
             
@@ -534,10 +503,8 @@ class SubLight:
         """ Sets Sublight channel """
         if 0 <= value <= 15:
             self.__channel = value
-            return True
         else:
             logging.error("Invalid PCA channel: %s. PCA9685 has 16 channels (0 -> 15).", str(value))
-            return False
         
     @property
     def brightness(self):
@@ -547,60 +514,12 @@ class SubLight:
     @brightness.setter
     def brightness(self, value:float) -> bool:
         """ Sets Sublight brightness """
-        if 0. <= value <= 1.:
+        if 0. <= value <= 1. and not mutex.locked():
             self.__brightness = value
             mapped_inp = 2*self.brightness - 1 # map to [-1,1]
-            if not mutex.locked():
-                WRITE_DUTY_CYCLE(self.channel, mapped_inp)
-            return True
+            WRITE_DUTY_CYCLE(self.channel, mapped_inp)
         else:
-            logging.error("Invalid Sublight brightness value: %s. Must be between 0 and 1", str(value))
-            return False
-  
-  
-class SonarCommChannel:
-  """ Implement the transport send and receive to the Sonar881 controller.
-  """
-
-  def __init__(self):
-    pass
-
-  def __enter__(self):
-    self.ser = serial.Serial('/dev/serial0', baudrate=115200, bytesize=8, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE)
-    # We wake up once in a while so the program can be interrupted.
-    self.ser.timeout = 0.5
-    return self
-  
-  def __exit__(self, *args):
-    self.ser.close()
-
-  def receiveStatus(self) -> str:
-    """ Wait forever for a switch command, and return it as a byte array.
-    """
-    got_line = False
-    read_data = bytearray(0)
-    while not got_line:
-      partial_data = self.ser.read_until(b'\n')
-      read_data.extend(partial_data)
-      if len(read_data) > 0 and read_data[-1] == 0x0a:
-        got_line = True
-
-    return eval(read_data.decode('utf-8').rstrip())
-
-  def receiveResponse(self) -> str:
-    read_data = self.ser.read_until(b'\n')
-    return read_data
-
-  def sendCommand(self, command:object):
-    """ Serializes and sends a command object to the Sonar881 controller.
-        Typically, this will be a dictionary, but limited arrays are also allowed.
-    """
-    commandString = json.dumps(command) + '\n'
-    sent_count = self.ser.write(bytes(commandString, "utf-8"))
-    self.ser.flush()
-    if sent_count != len(commandString):
-      logging.info('Sent ' + str(sent_count) + ' bytes, but should have sent ' + len(commandString))
-
+            logging.error("Mutex locked or invalid Sublight brightness value: %s. Must be between 0 and 1", str(value))
   
 class LimitSwitch:
     """
@@ -625,9 +544,13 @@ class LimitSwitch:
             self.BASE_OUT = self.BASE_OUT + navigator_ads.VOLTAGE[0]*self.VOLT_DIV_RATIO
             time.sleep(1/freq)
         self.BASE_OUT = self.BASE_OUT/int(time_avg*freq)
-        
-        Thread(target=self.monitor_limit_switch, daemon=True).start()
-
+    
+        self._thread = None
+    
+    def start(self):
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = Thread(target=self.monitor_limit_switch, daemon=True)
+            self._thread.start()
 
     def tare(self):
         override_state_holder =  self.override
@@ -663,48 +586,46 @@ class Beacon:
     Provides a model of the Succorfish Delphis beacon modem
     """
 
-    __recieved_msg = ''
-    __transmit_msg = ''
-
     def __init__(self):
-        t_listen = Thread(target=self.listen, daemon=True)
-        t_listen.start()
+        self.__received_msg = ''
+        self.__transmit_msg = ''
+        self._thread = None
+        
+    def start(self):
+        if self._thread is None or not self._thread.is_alive():
+            self._thread = Thread(target=self.listen, daemon=True)
+            self._thread.start()
         
     @property
-    def recieved_msg(self):
-        """ Gets latest recieved message """
-        return self.__recieved_msg
+    def received_msg(self):
+        """ Gets latest received message """
+        return self.__received_msg
 
-    @recieved_msg.setter
-    def recieved_msg(self, value:str) -> bool:
-        """ Sets latest recieved message """
-        self.__recieved_msg = value
-        return True
+    @received_msg.setter
+    def received_msg(self, value:str) -> bool:
+        """ Sets latest received message """
+        self.__received_msg = value
     
     @property
     def transmit_msg(self):
         """ Gets latest transmit message """
         return self.__transmit_msg
 
-    @transmit_msg.setter
-    def transmit_msg(self, value:str) -> bool:
-        """ Sets latest transmit message """
+    def transmit(self, value: str):
         try:
-            HOST = '127.0.0.1'
+            HOST = "127.0.0.1"
             PORT = 4000
-            s = socket.socket()
-            s.connect((HOST, PORT))
-            # fullmsg = 'MS-' + str(DEV_NO) + ' RE: ' + value
-            fullmsg = '106 RE: ' + value
-            s.send(fullmsg.encode())
-            s.close()
-            logging.info(fullmsg)
+
+            with socket.socket() as s:
+                s.connect((HOST, PORT))
+                fullmsg = f"106 RE: {value}"
+                s.send(fullmsg.encode())
+
             self.__transmit_msg = value
-            return True
+
         except Exception:
-            logging.info("ERROR transmitting message: " + str(value))
-            logging.info(traceback.format_exc())
-            return False
+            logging.error("Transmit failed")
+            logging.error(traceback.format_exc())
 
     # -----------------------------
     
@@ -714,14 +635,21 @@ class Beacon:
         HOST = '127.0.0.1'
         MAX_LENGTH = 4096
         serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversocket.bind((HOST, PORT))
+        serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            serversocket.bind((HOST, PORT))
+        except OSError as e:
+            logging.error(f"Beacon bind failed: {e}")
+            return
         serversocket.listen(5)
         while True:
-            (clientsocket, address) = serversocket.accept()
-            msg = clientsocket.recv(MAX_LENGTH)
-            if msg == '':  # client terminated connection
+            clientsocket, address = serversocket.accept()
+            try:
+                msg = clientsocket.recv(MAX_LENGTH)
+                if msg:
+                    self.received_msg = msg.decode()
+            finally:
                 clientsocket.close()
-            self.recieved_msg = msg.decode()
     
 
 class Sensors:    
@@ -792,14 +720,11 @@ class Sensors:
         """Sets data sampling rate (Hz)"""
         if value < 0:
             logging.error("Negative sampling rate specified. ")
-            return False
         elif value > 20:
             logging.warning("Processor unable to consistently sample above 20 Hz. Sample rate set to 20 Hz.")
             self.__sample_rate = 20
-            return True
         else:
             self.__sample_rate = value
-            return True
     
     @property
     def record(self):
@@ -815,9 +740,7 @@ class Sensors:
                 record.append(string)
             else:
                 logging.error("Invalid sensor requested")
-                return False
         self.__record = record
-        return True
 
     def WriteToFile(self, data_list = None, data_bin = False):
         # use outer function name as data_bin if not specified
@@ -841,13 +764,15 @@ class Sensors:
                     f.write(data_point)
                     f.write("\t")
                 f.write("\n")
-                
+
     @timer
-    def record_data(self, data_type:str):
+    def record_data(self, data_type: str):
         data_var = self.__all_sensors[data_type]
-        exec("self." + data_var + " = self._" + data_type.lower() + ".read()" )
-        data = eval("self._" + data_type.lower()+".read()")
-        self.WriteToFile( data, data_type )
+        sensor = getattr(self, f"_{data_type.lower()}")
+        data = sensor.read()
+        setattr(self, data_var, data)
+        self.WriteToFile(data, data_type)
+    
 
     def record_data_cont(self, data_type:str):
         time.sleep(self.__DATA_INIT_DELAY)

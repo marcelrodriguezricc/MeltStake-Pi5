@@ -18,7 +18,7 @@ The default IP address for all Raspberry pi on a shared network can be found by 
 If installing by a remote connection, connection is likely to be lost when network settings are updated — the setup will still run.
 
 # Standard Operating Procedure
-For long-term deployment, hand-load melt stake onto Walrus (delivery ROV). SSH into Walrus (`pi@192.168.1.3`(?) psk:`companion`) and navigate to `/home/pi/nav`. Run `tail -f unicast.txt` to monitor for any messages recieved from the melt stake. Run 
+For long-term deployment, hand-load melt stake onto Walrus (delivery ROV). SSH into Walrus (`pi@192.168.1.3`(?) psk:`companion`) and navigate to `/home/pi/nav`. Run `tail -f unicast.txt` to monitor for any messages received from the melt stake. Run 
 `send_command.py <BEACON_ID> DRILL 25 25` 
 when in range of the ice face (see interfacing section for more details). Once both ice screws are fully seated in the ice, run 
 `send_command.py <BEACON_ID> OFF` 
@@ -58,4 +58,4 @@ This is a useful command for zeroing the rotation count following intial deploym
     - -   `PT`     ::  pressure, temperature from ms5837
 
 
-All messages recieved by the ROV from the melt stake will be logged in `/home/pi/nav/unicast.txt`. Upon recieving a message (e.g., `<COMMAND>`) the melt stake will always send a confirmation reply in the format `RE: <COMMAND>`
+All messages received by the ROV from the melt stake will be logged in `/home/pi/nav/unicast.txt`. Upon receiving a message (e.g., `<COMMAND>`) the melt stake will always send a confirmation reply in the format `RE: <COMMAND>`
