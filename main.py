@@ -68,6 +68,7 @@ while not Operations.battery.under_voltage and not Operations.leaksensor.state:
                 msg = beacon.received_msg
                 
             msg = msg.upper()
+            logging.info("MSG: "+msg)
 
             beacon.transmit(msg)# echo back the message
             
@@ -142,6 +143,7 @@ elif Operations.battery.under_voltage:
 else:
     SOS_msg = "UNKNOWN ERROR"
 Operations.SOS.blink(10)
+logging.info("SOS: "+SOS_msg)
 
 
 while True:

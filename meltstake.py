@@ -122,6 +122,14 @@ def timer(func):
         return execution_time
     return inner
 
+_last_log = 0
+def logwait(message, interval=15):
+    global _last_log
+    now = time.monotonic()
+    if now - _last_log >= interval:
+        logging.info(message)
+        _last_log = now
+
 
 class LED:
     
@@ -324,7 +332,7 @@ class Drill:
     @speed.setter
     def speed(self, value:float) -> bool:
         """ Sets the motor target speed """
-        if -1 < value < 1:
+        if -1 <= value <= 1:
             self.__speed = value
         else:
             logging.error("Invalid motor speed request: %s. Value must be between -1.0 and 1.0", str(value))
@@ -337,7 +345,7 @@ class Drill:
     @current_speed.setter
     def current_speed(self, value:float) -> bool:
         """Sets the current motor speed"""
-        if -1 < value < 1:
+        if -1 <= value <= 1:
             self.__current_speed = value
         else:
             logging.error("Invalid motor speed: %s. Value must be between -1.0 and 1.0", str(value))

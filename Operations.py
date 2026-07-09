@@ -162,35 +162,96 @@ def RELEASE(arguments=None):
     AR_OVRD('T')
 
     stopauto = False
-    underwater = True
-    def monitor_depth():
-        """Operation to monitor the pressure reading for indications that the unit is underwater.
-        """
-        nonlocal underwater
-        
-        while not stopauto:
-            # [Pread, depth, velocity] = get_saved_data("Pressure", 1)
+    underwater = False
+    underwater_confirmed_count = 0
+    surface_confirmed = False
+    surface_confirmed_count = 0
+
+    def read_pressure_sample(max_lines=100, freshness_window_seconds=5.0):
+        """Return the latest pressure sample from the pressure log file if it is fresh."""
+        pressure_file = "/home/pi/data/Pressure.dat"
+        if not os.path.exists(pressure_file):
+            return None
+
+        try:
+            with open(pressure_file, "r") as fh:
+                lines = [line.strip() for line in fh if line.strip()]
+        except Exception:
+            return None
+
+        now = time.time()
+        for line in reversed(lines[-max_lines:]):
             try:
-                depth = data.PT[0]
-                if depth <= 1.05:
-                    underwater = False 
-                    break
+                parts = line.split('\t')
+                if len(parts) < 2:
+                    continue
+                timestamp = datetime.fromisoformat(parts[0].replace("Z", "+00:00"))
+                depth = float(parts[1])
+                if np.isfinite(depth) and (now - timestamp.timestamp()) <= freshness_window_seconds:
+                    return timestamp, depth
             except Exception:
-                underwater = True
-                logging.info("Bad pressure reading")
+                continue
+        return None
+
+    def monitor_depth():
+        """Operation to monitor fresh pressure readings before and during release."""
+        nonlocal underwater, underwater_confirmed_count, surface_confirmed, surface_confirmed_count
+
+        last_timestamp = None
+        while not stopauto and not surface_confirmed:
+            try:
+                sample = read_pressure_sample()
+                if sample is not None:
+                    timestamp, depth = sample
+                    if last_timestamp is None or timestamp > last_timestamp:
+                        last_timestamp = timestamp
+                        if depth > 1.05:
+                            underwater_confirmed_count += 1
+                            if underwater_confirmed_count >= 3:
+                                underwater = True
+                                break
+                            surface_confirmed_count = 0
+                        else:
+                            underwater_confirmed_count = 0
+                            surface_confirmed_count += 1
+                            if surface_confirmed_count >= 3:
+                                surface_confirmed = True
+                                break
+                    else:
+                        ms.logwait("Pressure timestamp has not advanced; waiting for fresh reading")
+                else:
+                    ms.logwait("No fresh pressure sample in log; waiting for fresh reading")
+            except Exception:
+                ms.logwait("Bad pressure reading; waiting for fresh reading")
+
             time.sleep(0.25)
         return
+
     Thread(daemon=True, target=monitor_depth).start()
 
     loops = 0
     in_attempts = -1
     wait_time = 1
     drill_out = [-1000, -1000] # some big number
+
+    start_deadline = time.time() + 3.0
+    while not stopauto and not underwater and not surface_confirmed and time.time() < start_deadline:
+        time.sleep(0.1)
+
+    if not underwater:
+        if surface_confirmed:
+            logging.info("Release not started: pressure indicates the unit is at the surface")
+            OFF()
+            AR_OVRD('F')
+            return
+        logging.info("Pressure state unclear; starting release")
+    else:
+        logging.info("Underwater confirmed; starting release")
+
     OFF()
-    if underwater:
-        Thread(daemon=True, target=DRILL, args=(drill_out,)).start()
-        motors[0].auto_release_OVRD = True
-    while underwater and not stopauto and max(np.array(data.ROT) - np.array(rotations_init)) < max_rotations:
+    Thread(daemon=True, target=DRILL, args=(drill_out,)).start()
+    motors[0].auto_release_OVRD = True
+    while not stopauto and not surface_confirmed and max(np.array(data.ROT) - np.array(rotations_init)) < max_rotations:
              
         time.sleep(wait_time)
 
