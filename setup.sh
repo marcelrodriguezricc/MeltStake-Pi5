@@ -66,17 +66,19 @@ install_python_repo() {
       cd "$REPO_PATH" || exit 1
       git fetch --all --tags || { warn "Failed to fetch ${REPO_NAME}"; exit 1; }
 
+      # Clean up local changes (untracked files and modified working directory)
+      git clean -fd > /dev/null 2>&1 || warn "Could not clean untracked files in ${REPO_NAME}"
+      git reset --hard HEAD > /dev/null 2>&1 || warn "Could not reset working directory in ${REPO_NAME}"
+
       if [ -n "$BRANCH" ]; then
         # Ensure we're on the desired branch
         git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH" || exit 1
-        git pull --rebase || warn "Could not pull updates for ${REPO_NAME} on branch $BRANCH"
-        git reset --hard "origin/$BRANCH" && ok "Reset ${REPO_NAME} to origin/$BRANCH" || warn "Could not reset ${REPO_NAME}"
+        git reset --hard "origin/$BRANCH" && ok "Updated ${REPO_NAME} to origin/$BRANCH" || warn "Could not reset ${REPO_NAME}"
       else
-        git pull --rebase || warn "Could not pull updates for ${REPO_NAME}"
-        git reset --hard "origin/HEAD" && ok "Reset ${REPO_NAME} to latest" || warn "Could not reset ${REPO_NAME}"
+        git reset --hard "origin/HEAD" && ok "Updated ${REPO_NAME} to latest" || warn "Could not reset ${REPO_NAME}"
       fi
-    ) && ok "Updated ${REPO_NAME}" \
-      || warn "Updated ${REPO_NAME} with warnings (continuing with reinstall)"
+    ) && ok "${REPO_NAME} ready for reinstall" \
+      || warn "${REPO_NAME} updated with warnings (continuing with reinstall)"
   fi
 
   if [ -n "${SUDO_USER:-}" ]; then
@@ -129,16 +131,18 @@ install_repo() {
       cd "$TARGET_DIR" || exit 1
       git fetch --all --tags || { warn "Failed to fetch ${LABEL}"; exit 1; }
 
+      # Clean up local changes (untracked files and modified working directory)
+      git clean -fd > /dev/null 2>&1 || warn "Could not clean untracked files in ${LABEL}"
+      git reset --hard HEAD > /dev/null 2>&1 || warn "Could not reset working directory in ${LABEL}"
+
       if [ -n "$BRANCH" ]; then
         git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH" || exit 1
-        git pull --rebase || warn "Could not pull updates for ${LABEL} on branch $BRANCH"
-        git reset --hard "origin/$BRANCH" && ok "Reset ${LABEL} to origin/$BRANCH" || warn "Could not reset ${LABEL}"
+        git reset --hard "origin/$BRANCH" && ok "Updated ${LABEL} to origin/$BRANCH" || warn "Could not reset ${LABEL}"
       else
-        git pull --rebase || warn "Could not pull updates for ${LABEL}"
-        git reset --hard "origin/HEAD" && ok "Reset ${LABEL} to latest" || warn "Could not reset ${LABEL}"
+        git reset --hard "origin/HEAD" && ok "Updated ${LABEL} to latest" || warn "Could not reset ${LABEL}"
       fi
-    ) && ok "Updated ${LABEL}" \
-      || warn "Updated ${LABEL} with warnings (continuing with setup)"
+    ) && ok "${LABEL} ready for setup" \
+      || warn "${LABEL} updated with warnings (continuing with setup)"
   fi
 
   if [ -n "${SUDO_USER:-}" ]; then
