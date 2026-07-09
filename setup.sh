@@ -61,33 +61,35 @@ install_python_repo() {
         || { error "Failed to clone ${REPO_NAME}"; return 1; }
     fi
   else
-    log "Repo already exists: $REPO_PATH (updating)"
+    log "Repo already exists: $REPO_PATH (pulling updates)"
     (
       cd "$REPO_PATH" || exit 1
-      git fetch --all --tags
+      git fetch --all --tags || { warn "Failed to fetch ${REPO_NAME}"; exit 1; }
 
       if [ -n "$BRANCH" ]; then
         # Ensure we're on the desired branch
         git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH" || exit 1
-        git pull --ff-only || warn "Could not fast-forward ${REPO_NAME} on branch $BRANCH"
+        git pull --rebase || warn "Could not pull updates for ${REPO_NAME} on branch $BRANCH"
+        git reset --hard "origin/$BRANCH" && ok "Reset ${REPO_NAME} to origin/$BRANCH" || warn "Could not reset ${REPO_NAME}"
       else
-        git pull || warn "Failed to update ${REPO_NAME} (continuing with existing state)"
+        git pull --rebase || warn "Could not pull updates for ${REPO_NAME}"
+        git reset --hard "origin/HEAD" && ok "Reset ${REPO_NAME} to latest" || warn "Could not reset ${REPO_NAME}"
       fi
     ) && ok "Updated ${REPO_NAME}" \
-      || warn "Failed to update ${REPO_NAME} (continuing with existing state)"
+      || warn "Updated ${REPO_NAME} with warnings (continuing with reinstall)"
   fi
 
   if [ -n "${SUDO_USER:-}" ]; then
     chown -R "$SUDO_USER:$SUDO_USER" "$REPO_PATH" || warn "Failed to set ownership on $REPO_PATH"
   fi
 
-  # Install into virtual environment
-  log "Installing ${REPO_NAME} into virtual environment"
+  # Reinstall into virtual environment (upgrades existing install if needed)
+  log "Reinstalling ${REPO_NAME} into virtual environment"
   (
     cd "$REPO_PATH" || exit 1
-    run_as_owner "$VENV_DIR/bin/python" -m pip install .
-  ) && ok "Installed ${REPO_NAME} into virtual environment" \
-    || { error "Failed to install ${REPO_NAME} into virtual environment"; return 1; }
+    run_as_owner "$VENV_DIR/bin/python" -m pip install --upgrade .
+  ) && ok "Reinstalled ${REPO_NAME} into virtual environment" \
+    || { error "Failed to reinstall ${REPO_NAME} into virtual environment"; return 1; }
 }
 
 # Install non-python repository by setup.sh
@@ -122,19 +124,21 @@ install_repo() {
         || { error "Failed to clone ${LABEL}"; return 1; }
     fi
   else
-    log "Repo already exists: $TARGET_DIR (updating)"
+    log "Repo already exists: $TARGET_DIR (pulling updates)"
     (
       cd "$TARGET_DIR" || exit 1
-      git fetch --all --tags
+      git fetch --all --tags || { warn "Failed to fetch ${LABEL}"; exit 1; }
 
       if [ -n "$BRANCH" ]; then
         git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" "origin/$BRANCH" || exit 1
-        git pull --ff-only || warn "Could not fast-forward ${LABEL} on branch $BRANCH"
+        git pull --rebase || warn "Could not pull updates for ${LABEL} on branch $BRANCH"
+        git reset --hard "origin/$BRANCH" && ok "Reset ${LABEL} to origin/$BRANCH" || warn "Could not reset ${LABEL}"
       else
-        git pull || warn "Failed to update ${LABEL} (continuing with existing state)"
+        git pull --rebase || warn "Could not pull updates for ${LABEL}"
+        git reset --hard "origin/HEAD" && ok "Reset ${LABEL} to latest" || warn "Could not reset ${LABEL}"
       fi
     ) && ok "Updated ${LABEL}" \
-      || warn "Failed to update ${LABEL} (continuing with existing state)"
+      || warn "Updated ${LABEL} with warnings (continuing with setup)"
   fi
 
   if [ -n "${SUDO_USER:-}" ]; then
