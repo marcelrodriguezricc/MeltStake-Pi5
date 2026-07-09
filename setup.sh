@@ -8,6 +8,14 @@ ok()     { echo -e "\033[1;32m[ OK ]\033[0m $1"; }
 warn()   { echo -e "\033[1;33m[WARN]\033[0m $1"; }
 error()  { echo -e "\033[1;31m[FAIL]\033[0m $1"; }
 
+run_as_owner() {
+  if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
+    sudo -u "$SUDO_USER" "$@"
+  else
+    "$@"
+  fi
+}
+
 # Avoid redunant WiFi connections when creating new ones
 cleanup_con() {
 
@@ -69,11 +77,15 @@ install_python_repo() {
       || warn "Failed to update ${REPO_NAME} (continuing with existing state)"
   fi
 
+  if [ -n "${SUDO_USER:-}" ]; then
+    chown -R "$SUDO_USER:$SUDO_USER" "$REPO_PATH" || warn "Failed to set ownership on $REPO_PATH"
+  fi
+
   # Install into virtual environment
   log "Installing ${REPO_NAME} into virtual environment"
   (
     cd "$REPO_PATH" || exit 1
-    "$VENV_DIR/bin/python" -m pip install .
+    run_as_owner "$VENV_DIR/bin/python" -m pip install .
   ) && ok "Installed ${REPO_NAME} into virtual environment" \
     || { error "Failed to install ${REPO_NAME} into virtual environment"; return 1; }
 }
@@ -125,6 +137,10 @@ install_repo() {
       || warn "Failed to update ${LABEL} (continuing with existing state)"
   fi
 
+  if [ -n "${SUDO_USER:-}" ]; then
+    chown -R "$SUDO_USER:$SUDO_USER" "$TARGET_DIR" || warn "Failed to set ownership on $TARGET_DIR"
+  fi
+
   # Run setup script from inside directory
   if [ -n "$SETUP_REL" ]; then
     local SETUP_PATH="$TARGET_DIR/$SETUP_REL"
@@ -133,11 +149,11 @@ install_repo() {
       log "Running setup script: $SETUP_PATH"
 
       if [ "$USE_YES" = "yes" ]; then
-        ( cd "$TARGET_DIR" && yes | bash "./$SETUP_REL" ) \
+        ( cd "$TARGET_DIR" && yes | run_as_owner bash "./$SETUP_REL" ) \
           && ok "${LABEL} setup completed" \
           || warn "${LABEL} setup returned an error (check output)"
       else
-        ( cd "$TARGET_DIR" && bash "./$SETUP_REL" ) \
+        ( cd "$TARGET_DIR" && run_as_owner bash "./$SETUP_REL" ) \
           && ok "${LABEL} setup completed" \
           || warn "${LABEL} setup returned an error (check output)"
       fi
@@ -368,22 +384,22 @@ fi
 
 # Upgrade pip inside virtual environment
 log "Upgrading pip inside virtual environment"
-"$VENV_DIR/bin/python" -m pip install --upgrade pip \
-  && ok "pip upgraded inside virutal environment"
+run_as_owner "$VENV_DIR/bin/python" -m pip install --upgrade pip \
+  && ok "pip upgraded inside virtual environment"
 
 # Set virtual environment ownership
 chown -R "$SUDO_USER:$SUDO_USER" "$PROJECT_DIR"
 
 # Bootstrap build tools (pip/setuptools/wheel) to virtual environment
 log "Ensuring virtual environment build tools are present (pip/setuptools/wheel)"
-"$VENV_DIR/bin/python" -m pip install -U pip setuptools wheel \
+run_as_owner "$VENV_DIR/bin/python" -m pip install -U pip setuptools wheel \
   && ok "virtual environment build tools ready" \
   || warn "Could not upgrade virtual environment build tools (continuing, but installs may fail)"
 
 # Install Python dependencies inside of virtual environment
 if [ -f "$REQ_FILE" ]; then
   log "Installing Python dependencies from requirements.txt into virtual environment"
-  "$VENV_DIR/bin/pip" install -r "$REQ_FILE" \
+  run_as_owner "$VENV_DIR/bin/pip" install -r "$REQ_FILE" \
     && ok "Python dependencies installed into virtual environment"
 else
   warn "requirements.txt not found at $REQ_FILE (skipping Python dependencies)"
@@ -392,11 +408,11 @@ fi
 # GPIO backend fix for circuitpython
 log "Ensuring Pi 5-compatible GPIO backend (remove legacy RPi.GPIO, install rpi-lgpio)"
 
-"$VENV_DIR/bin/python" -m pip uninstall -y RPi.GPIO \
+run_as_owner "$VENV_DIR/bin/python" -m pip uninstall -y RPi.GPIO \
   && ok "Removed RPi.GPIO from virtual environment" \
   || warn "RPi.GPIO not installed in virtual environment (skipping uninstall)"
 
-"$VENV_DIR/bin/python" -m pip install -U rpi-lgpio \
+run_as_owner "$VENV_DIR/bin/python" -m pip install -U rpi-lgpio \
   && ok "Installed/updated rpi-lgpio in virtual environment" \
   || { warn "Failed to install rpi-lgpio"; exit 1; }
 
