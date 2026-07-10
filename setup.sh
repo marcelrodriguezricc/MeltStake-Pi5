@@ -600,6 +600,11 @@ echo "SUCCESS: Permissions for project and service script directories configured
 # List of service scripts
 scripts='heartbeat LeakDetection ptv sonar ctd'
 
+if [[ "$SyslogIdentifier" == "LeakDetection" || "$SyslogIdentifier" == "heartbeat" ]]; then
+  MOUNT_CHECK=""
+else
+  MOUNT_CHECK="ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme"
+fi
 # For each script...
 for SyslogIdentifier in $scripts; do
 
@@ -625,7 +630,7 @@ RestartSec=10
 StandardOutput=append:/var/log/$SyslogIdentifier.log
 StandardError=append:/var/log/$SyslogIdentifier.log
 SyslogIdentifier=$SyslogIdentifier
-ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme
+$MOUNT_CHECK
 ExecStart=$SERVICE_DIR/$SyslogIdentifier.py
 
 [Install]
@@ -655,7 +660,7 @@ for s in $scripts; do
 done
 
 # Print success for building service files
-echo "SUCCESS: Service files built and verified."w
+echo "SUCCESS: Service files built and verified."
 
 # Melt Stake service file path
 LOG_FILE="/var/log/meltstake.log"
