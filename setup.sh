@@ -859,8 +859,7 @@ echo ""data" directory created"
 
 echo "Setting PSU Maximum Current..."
 
-# mA; 5000
-VALUE="${1:-5000}" # mA; 5000
+VALUE=5000 # mA; 5000
 
 # Read the current bootloader EEPROM config
 current="$(sudo rpi-eeprom-config)"
