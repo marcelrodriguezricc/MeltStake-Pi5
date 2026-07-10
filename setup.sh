@@ -696,6 +696,34 @@ sudo systemctl daemon-reload
 # Print success for building service files
 echo "SUCCESS: Melt Stake service file built and verified."
 
+# create helpful script to check status of all services
+{x
+    echo '#!/usr/bin/env bash'
+    echo
+    echo 'SERVICES=('
+    # Add services that aren't in $scripts
+    echo '    meltstake'
+    echo '    beacons'
+    # Add the services from $scripts
+    for svc in $scripts; do
+        printf '    %s\n' "$svc"
+    done
+    cat <<'EOF'
+)
+for svc in "${SERVICES[@]}"; do
+    enabled=$(systemctl is-enabled "$svc" 2>/dev/null)
+    status=$(systemctl is-active "$svc" 2>/dev/null)
+
+    printf "%-25s %-12s %-12s\n" "$svc" "$enabled" "$status"
+done
+EOF
+} > "/home/$SUDO_USER/check_services.sh"
+
+chmod +x "/home/$SUDO_USER/check_services.sh"
+
+echo "Created check_services.sh"
+
+
 # ----- EXTERNAL RTC -----
 
 # Create service script to set system clock from external RTC on start up
