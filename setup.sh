@@ -711,21 +711,49 @@ echo "SUCCESS: Melt Stake service file built and verified."
 {
     echo '#!/usr/bin/env bash'
     echo
-    echo 'SERVICES=('
-    # Add services that aren't in $scripts
-    echo '    meltstake'
-    echo '    beacons'
+
+    cat <<'EOF'
+format_age() {
+    local seconds=$1
+
+    if (( seconds < 60 )); then
+        echo "${seconds}s ago"
+    elif (( seconds < 3600 )); then
+        echo "$((seconds / 60))min ago"
+    elif (( seconds < 86400 )); then
+        echo "$((seconds / 3600))h ago"
+    else
+        echo "$((seconds / 86400))d ago"
+    fi
+}
+SERVICES=(
+    meltstake
+    beacons
+EOF
+
     # Add the services from $scripts
     for svc in $scripts; do
         printf '    %s\n' "$svc"
     done
+
     cat <<'EOF'
 )
+printf "%-15s %-10s %-15s %-35s\n" "SERVICE" "ENABLED" "STATUS" "STARTED"
 for svc in "${SERVICES[@]}"; do
     enabled=$(systemctl is-enabled "$svc" 2>/dev/null)
     status=$(systemctl is-active "$svc" 2>/dev/null)
 
-    printf "%-25s %-12s %-12s\n" "$svc" "$enabled" "$status"
+    age_timestamp=$(systemctl show "$svc" -p ActiveEnterTimestamp --value 2>/dev/null)
+
+    if [[ -n "$age_timestamp" ]]; then
+        start_epoch=$(date -d "$age_timestamp" +%s 2>/dev/null)
+        now_epoch=$(date +%s)
+        age="$age_timestamp; $(format_age $((now_epoch - start_epoch)))"
+    else
+        age=" "
+    fi
+
+    printf "%-15s %-10s %-15s %-35s\n" "$svc" "$enabled" "$status" "$age"
 done
 EOF
 } > "/home/$SUDO_USER/check_services.sh"
@@ -880,7 +908,7 @@ fi
 
 # Stage it to the EEPROM
 sudo rpi-eeprom-config --apply "$cfg"
-echo "PSU_MAX_CURRENT set to ${VALUE} mA after reboot.
+echo "PSU_MAX_CURRENT set to ${VALUE} mA after reboot."
 
 # Final banner
 echo "------------------------------------------------------------"
