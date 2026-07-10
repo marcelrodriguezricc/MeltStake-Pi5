@@ -514,42 +514,6 @@ install_repo \
   "" \
   || warn "Continuing after failure: acoustic-beacons"
 
-BEACON_SERVICE="/etc/systemd/system/beacons.service"
-
-# Patch + enable service only if the unit file exists
-if [ -f "$BEACON_SERVICE" ]; then
-  log "Configuring systemd restart policy for beacons.service"
-
-  # Only insert Restart lines if they're not already present
-  if ! grep -q '^Restart=always' "$BEACON_SERVICE"; then
-    if grep -q 'StandardOutput=syslog' "$BEACON_SERVICE"; then
-      sed -i '/StandardOutput=syslog/ i Restart=always\
-RestartSec=30' "$BEACON_SERVICE" \
-        && ok "Added Restart=always and RestartSec=30 to beacons.service" \
-        || warn "Failed to patch beacons.service"
-    else
-      warn "Anchor 'StandardOutput=syslog' not found; appending restart policy to end of service file"
-      {
-        echo ""
-        echo "Restart=always"
-        echo "RestartSec=30"
-      } >> "$BEACON_SERVICE" \
-        && ok "Appended restart policy to beacons.service" \
-        || warn "Failed to append restart policy to beacons.service"
-    fi
-  else
-    log "Restart policy already present (skipping patch)"
-  fi
-
-  log "Reloading systemd daemon"
-  systemctl daemon-reload && ok "systemd daemon reloaded" || warn "daemon-reload failed"
-
-  log "Enabling beacons service at boot"
-  systemctl enable beacons && ok "beacons enabled" || warn "Failed to enable beacons"
-else
-  warn "beacons.service not found at $BEACON_SERVICE; skipping systemd patch/enable"
-fi
-
 # ----- CONFIGURE INTERFACE OPTIONS -----
 
 log "Configuring Raspberry Pi interface options"
