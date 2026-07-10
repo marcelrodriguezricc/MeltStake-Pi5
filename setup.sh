@@ -522,6 +522,10 @@ log "NOTE: Changes below require a reboot to take effect"
 
 INTERFACE_FILE="/boot/firmware/config.txt"
 
+# Enable max current for USB ports
+log "Enabling max current for USB ports"
+ensure_line "usb_max_current_enable=1" "$INTERFACE_FILE"
+
 # Disable Bluetooth
 log "Disabling onboard Bluetooth"
 ensure_line "dtoverlay=disable-bt" "$INTERFACE_FILE"
@@ -600,13 +604,14 @@ echo "SUCCESS: Permissions for project and service script directories configured
 # List of service scripts
 scripts='heartbeat LeakDetection ptv sonar ctd'
 
-if [[ "$SyslogIdentifier" == "LeakDetection" || "$SyslogIdentifier" == "heartbeat" ]]; then
-  MOUNT_CHECK=""
-else
-  MOUNT_CHECK="ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme"
-fi
 # For each script...
 for SyslogIdentifier in $scripts; do
+
+  if [[ "$SyslogIdentifier" == "LeakDetection" || "$SyslogIdentifier" == "heartbeat" ]]; then
+    MOUNT_CHECK=""
+  else
+    MOUNT_CHECK="ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme"
+  fi
 
   # Build paths for log and service file
   LOG_FILE="/var/log/$SyslogIdentifier.log"
