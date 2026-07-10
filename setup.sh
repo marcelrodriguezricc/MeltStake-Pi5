@@ -625,6 +625,7 @@ RestartSec=10
 StandardOutput=append:/var/log/$SyslogIdentifier.log
 StandardError=append:/var/log/$SyslogIdentifier.log
 SyslogIdentifier=$SyslogIdentifier
+ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme
 ExecStart=$SERVICE_DIR/$SyslogIdentifier.py
 
 [Install]
@@ -697,7 +698,7 @@ sudo systemctl daemon-reload
 echo "SUCCESS: Melt Stake service file built and verified."
 
 # create helpful script to check status of all services
-{x
+{
     echo '#!/usr/bin/env bash'
     echo
     echo 'SERVICES=('
