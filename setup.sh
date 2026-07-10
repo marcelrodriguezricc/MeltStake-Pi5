@@ -860,6 +860,34 @@ sudo mkdir -p "$MOUNT_POINT/data"
 chown -R "$SUDO_USER:$SUDO_USER" "$MOUNT_POINT/data"
 echo ""data" directory created"
 
+# ----- PSU CURRENT -----
+
+echo "Setting PSU Maximum Current..."
+
+# mA; 5000
+VALUE="${1:-5000}" # mA; 5000
+
+# Read the current bootloader EEPROM config
+current="$(sudo rpi-eeprom-config)"
+
+# If already correct, do nothing
+if grep -qx "PSU_MAX_CURRENT=${VALUE}" <<<"$current"; then
+    echo "PSU_MAX_CURRENT already ${VALUE} mA; nothing to do."
+    exit 0
+fi
+
+# Build updated config: replace the line if present, else append it.
+cfg="$(mktemp)"; trap 'rm -f "$cfg"' EXIT
+if grep -q '^PSU_MAX_CURRENT=' <<<"$current"; then
+    sed "s/^PSU_MAX_CURRENT=.*/PSU_MAX_CURRENT=${VALUE}/" <<<"$current" > "$cfg"
+else
+    { printf '%s\n' "$current"; echo "PSU_MAX_CURRENT=${VALUE}"; } > "$cfg"
+fi
+
+# Stage it to the EEPROM
+sudo rpi-eeprom-config --apply "$cfg"
+echo "PSU_MAX_CURRENT set to ${VALUE} mA after reboot.
+
 # Final banner
 echo "------------------------------------------------------------"
 echo "SETUP COMPLETE, PLEASE REBOOT"
