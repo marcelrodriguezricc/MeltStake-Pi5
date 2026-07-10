@@ -482,6 +482,7 @@ install_python_repo \
   "deployment" \
   || warn "Continuing after failure: ms5837-python"
 
+# PTV
 install_repo \
   "https://github.com/marcelrodriguezricc/meltstake-ptv.git" \
   "/home/$SUDO_USER/meltstake-ptv" \
@@ -491,6 +492,7 @@ install_repo \
   "yes" \
   || warn "Continuing after failure: meltstake-ptv"
 
+# Sonar
   install_repo \
   "https://github.com/marcelrodriguezricc/meltstake-sonar.git" \
   "/home/$SUDO_USER/meltstake-sonar" \
@@ -499,6 +501,16 @@ install_repo \
   "scripts/setup.sh" \
   "yes" \
   || warn "Continuing after failure: meltstake-sonar"
+
+# CTD
+  install_repo \
+  "https://github.com/marcelrodriguezricc/meltstake-ctd.git" \
+  "/home/$SUDO_USER/meltstake-ctd" \
+  "meltstake_ctd" \
+  "" \
+  "scripts/setup.sh" \
+  "yes" \
+  || warn "Continuing after failure: meltstake-ctd"
 
 # Acoustic Beacon
 install_repo \
@@ -630,7 +642,7 @@ echo "SUCCESS: Permissions for project and service script directories configured
 # ----- SERVICE SCRIPTS -----
 
 # List of service scripts
-scripts='heartbeat LeakDetection ptv sonar'
+scripts='heartbeat LeakDetection ptv sonar ctd'
 
 # For each script...
 for SyslogIdentifier in $scripts; do
