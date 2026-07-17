@@ -260,6 +260,29 @@ sudo nmcli con mod "wifi-ScienceShare" ipv4.method manual \
 log "Enabling autoconnect (priority 20) for wifi-ScienceShare"
 sudo nmcli con mod "wifi-ScienceShare" connection.autoconnect yes connection.autoconnect-priority 20
 
+# Create Network Manager WiFi profile for SDA-SNOWLINK
+log "Creating WiFi profile: wifi-SDA-SNOWLINK (SSID: SDA-SNOWLINK)"
+sudo nmcli con add type wifi ifname wlan0 \
+  con-name "wifi-SDA-SNOWLINK" \
+  ssid "SDA-SNOWLINK" >/dev/null 2>&1 \
+  && ok "Created connection: wifi-SDA-SNOWLINK" \
+  || error "Failed to create connection: wifi-SDA-SNOWLINK"
+
+# Set password for SDA-SNOWLINK
+log "Setting WPA2 password for wifi-SDA-SNOWLINK"
+sudo nmcli con mod "wifi-SDA-SNOWLINK" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "snowlink2023"
+
+# Use DHCP (no static IP)
+log "Configuring wifi-SDA-SNOWLINK to use DHCP"
+sudo nmcli con mod "wifi-SDA-SNOWLINK" \
+  ipv4.method auto \
+  ipv4.ignore-auto-dns no \
+  && ok "DHCP configured for wifi-SDA-SNOWLINK"
+
+# Enable autoconnect and set priority for SDA-SNOWLINK (10)
+log "Enabling autoconnect (priority 10) for wifi-SDA-SNOWLINK"
+sudo nmcli con mod "wifi-SDA-SNOWLINK" connection.autoconnect yes connection.autoconnect-priority 10
+
 # Configure fallback AccessPoint meltstakeXX
 log "Configuring fallback Access Point: meltStake${SUFFIX}"
 log "This AP will activate only if no known WiFi is available"
@@ -278,6 +301,8 @@ sudo nmcli con mod "ap-meltStake${SUFFIX}" \
   802-11-wireless.channel 6 \
   wifi-sec.key-mgmt wpa-psk \
   wifi-sec.psk "raspberry" \
+  ipv4.method shared \
+  ipv6.method disabled \
   && ok "Access Point configuration complete"
 
 # End of section summary for WiFi & static IP configuration
@@ -286,6 +311,7 @@ ok "WiFi configuration complete"
 log "Configured networks:"
 log "wifi-mixz → 10.0.1.1${SUFFIX}"
 log "wifi-ScienceShare → 192.168.0.1${SUFFIX}"
+log "wifi-SDA-SNOWLINK → 192.168.4.1${SUFFIX}"
 log "ap-meltStake${SUFFIX} (fallback AP)"
 echo
 
