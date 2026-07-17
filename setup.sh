@@ -635,8 +635,10 @@ for SyslogIdentifier in $scripts; do
 
   if [[ "$SyslogIdentifier" == "LeakDetection" || "$SyslogIdentifier" == "heartbeat" ]]; then
     MOUNT_CHECK=""
+    RESTART="always"
   else
     MOUNT_CHECK="ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme"
+    RESTART="no"
   fi
 
   # Build paths for log and service file
@@ -656,7 +658,7 @@ Description=$SyslogIdentifier
 Type=simple
 WorkingDirectory=$PROJECT_DIR
 User=$SUDO_USER
-Restart=always
+Restart=$RESTART
 RestartSec=10
 StandardOutput=append:/var/log/$SyslogIdentifier.log
 StandardError=append:/var/log/$SyslogIdentifier.log
