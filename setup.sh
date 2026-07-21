@@ -206,6 +206,7 @@ log "Cleaning up any existing NetworkManager WiFi profiles"
 # Remove redundancies before creating new connections
 cleanup_con "wifi-mixz"
 cleanup_con "wifi-ScienceShare"
+cleanup_con "wifi-SDA-SNOWLINK"
 cleanup_con "ap-meltStake${SUFFIX}"
 cleanup_con "wifi-meltStake${SUFFIX}"
 cleanup_con "netplan-wlan0-mixz"
@@ -311,7 +312,7 @@ ok "WiFi configuration complete"
 log "Configured networks:"
 log "wifi-mixz → 10.0.1.1${SUFFIX}"
 log "wifi-ScienceShare → 192.168.0.1${SUFFIX}"
-log "wifi-SDA-SNOWLINK → 192.168.4.1${SUFFIX}"
+log "wifi-SDA-SNOWLINK → DHCP"
 log "ap-meltStake${SUFFIX} (fallback AP)"
 echo
 
@@ -636,9 +637,11 @@ for SyslogIdentifier in $scripts; do
   if [[ "$SyslogIdentifier" == "LeakDetection" || "$SyslogIdentifier" == "heartbeat" ]]; then
     MOUNT_CHECK=""
     RESTART="always"
+    SLEEP_START=""
   else
     MOUNT_CHECK="ExecStartPre=/usr/bin/mountpoint -q /mnt/nvme"
     RESTART="no"
+    SLEEP_START="ExecStartPre=/bin/sleep 10"
   fi
 
   # Build paths for log and service file
@@ -664,6 +667,7 @@ StandardOutput=append:/var/log/$SyslogIdentifier.log
 StandardError=append:/var/log/$SyslogIdentifier.log
 SyslogIdentifier=$SyslogIdentifier
 $MOUNT_CHECK
+$SLEEP_START
 ExecStart=$SERVICE_DIR/$SyslogIdentifier.py
 
 [Install]
