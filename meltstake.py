@@ -333,7 +333,7 @@ class Drill:
     def speed(self, value:float) -> bool:
         """ Sets the motor target speed """
         if -1 <= value <= 1:
-            self.__speed = value
+            self.__speed = -value # negative to fix noah's dumb bad wiring
         else:
             logging.error("Invalid motor speed request: %s. Value must be between -1.0 and 1.0", str(value))
         
