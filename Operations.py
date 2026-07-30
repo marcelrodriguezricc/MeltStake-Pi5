@@ -209,7 +209,6 @@ def RELEASE(arguments=None):
                             underwater_confirmed_count += 1
                             if underwater_confirmed_count >= 3:
                                 underwater = True
-                                break
                             surface_confirmed_count = 0
                         else:
                             underwater_confirmed_count = 0
