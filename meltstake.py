@@ -9,7 +9,7 @@ from math import sin, cos, asin, atan2, sqrt, pi
 from threading import Thread, Lock
 import traceback
 import socket
-import serial
+import serial # type: ignore
 from datetime import datetime, timezone
 import inspect
 import board
