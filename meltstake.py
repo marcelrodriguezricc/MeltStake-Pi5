@@ -333,7 +333,7 @@ class Drill:
     def speed(self, value:float) -> bool:
         """ Sets the motor target speed """
         if -1 <= value <= 1:
-            self.__speed = -value # negative to fix noah's dumb bad wiring
+            self.__speed = value
         else:
             logging.error("Invalid motor speed request: %s. Value must be between -1.0 and 1.0", str(value))
         
@@ -407,7 +407,7 @@ class Drill:
                     try:
                         print(str(self.ID_number)+" Mutex aquired")
                         logging.info('writing speed '+str(self.speed)+' to motor #'+str(self.ID_number)+'. Current speed is '+str(self.current_speed))
-                        WRITE_DUTY_CYCLE(self.ID_number, self.speed)
+                        WRITE_DUTY_CYCLE(self.ID_number, -self.speed) # take negative of input to fix reversed motor polarity Jun31_2026
                         self.current_speed = self.speed
                     except Exception as e:
                         logging.error("PWM write failed for motor "+str(self.ID_number))
