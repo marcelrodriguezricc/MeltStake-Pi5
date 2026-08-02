@@ -6,6 +6,7 @@ import traceback
 import logging
 import argparse
 from threading import Thread
+import subprocess
 
 from meltstake import Beacon
 import Operations
@@ -140,17 +141,25 @@ if Operations.leaksensor.state:
     SOS_msg = "LEAK DETECTED!"
 elif Operations.battery.under_voltage:
     SOS_msg = "LOW BATTERY! : "+f"{Operations.battery.voltage:.1f}"+"V"
+    for process in ["sonar", "ptv", "ctd"]:
+        subprocess.run(
+            ["sudo", "systemctl", "stop", f"{process}.service"],
+            check=True
+        )
 else:
     SOS_msg = "UNKNOWN ERROR"
 Operations.SOS.blink(10)
 logging.info("SOS: "+SOS_msg)
 
-
+SOS_init_time = time.time()
 while True:
     try:
         beacon.transmit("SOS")
         time.sleep(5)
         beacon.transmit(SOS_msg)
+        if time.time() - SOS_init_time > 3600:
+            logging.info("Im feeling awful tired, I think I'll go to sleep now...")
+            subprocess.run(["sudo", "shutdown", "-h", "now"], check=True)
     except Exception:
         pass
     time.sleep(5)
