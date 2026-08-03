@@ -233,14 +233,21 @@ class Battery:
     
     def monitor_voltage(self):
         """ Thread to monitor voltage and update battery charge state """
+        self.under_voltage = False
         BATT_VOLT_DIV_RATIO = (3.3 + 10) / 3.3  # R1 = 10kOhm; R2 = 3.3kOhm
         while True:
-            self.voltage = battery_ads.VOLTAGE[3] * BATT_VOLT_DIV_RATIO
-            if self.voltage <= self.voltage_limit:
-                self.under_voltage = True
-            else:
-                self.under_voltage = False
-            time.sleep(0.25)
+            try:
+                max_voltage = 0.0
+                for _ in range(100):
+                    time.sleep(0.1)
+                    voltage_sample = battery_ads.VOLTAGE[3] * BATT_VOLT_DIV_RATIO
+                    max_voltage = max(max_voltage, voltage_sample)
+                self.voltage = max_voltage
+                self.under_voltage =  self.voltage <= self.voltage_limit
+            except Exception as e:
+                logging.error("Battery voltage monitoring failed")
+                logging.error("ERROR : " + str(e))
+                time.sleep(5)
     
 
 class LeakDetection:  
