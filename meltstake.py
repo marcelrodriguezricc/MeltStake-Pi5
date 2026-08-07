@@ -425,7 +425,7 @@ class Drill:
         """ Monitor current draw of motor, set speed to zero if it exceeds limit """
         CURR_DRAW_DIV_RATIO = 1  # no volt divider
         while True:
-            self.current_draw = 10 * (2.5 - battery_ads.VOLTAGE[self.ID_number] * CURR_DRAW_DIV_RATIO)
+            self.current_draw = 10 * (2.5 - battery_ads.VOLTAGE[int(not self.ID_number)] * CURR_DRAW_DIV_RATIO)
             if self.current_draw > self.current_limit:
                 self.overdrawn = True
                 self.speed = 0.0 # set speed to zero
