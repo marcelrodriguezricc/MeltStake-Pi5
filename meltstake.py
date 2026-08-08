@@ -29,11 +29,11 @@ logging.basicConfig(level=logging.DEBUG, filename="/home/pi/data/meltstake.log",
 
 # get device ID_number from static IP
 try:
-    f = open("/etc/dhcpcd.conf", "r")
-    sstrn = 'static ip_address=10.0.1.1'
-    for line in f:
-        if line.startswith(sstrn):
-            DEV_NO = re.split(sstrn+'|/',  line)[1]
+    with open("/etc/dhcpcd.conf", "r") as f:
+        sstrn = 'static ip_address=10.0.1.1'
+        for line in f:
+            if line.startswith(sstrn):
+                DEV_NO = re.split(sstrn+'|/',  line)[1]
 except Exception:
     DEV_NO = '00'
 
@@ -216,7 +216,7 @@ class Battery:
         if 12.8 <= value <= 16.8:
             self.__voltage_limit = value
         else:
-            LOG_STRING = "Minimum battery voltage limit set to a value outside of expected range:, " + str(value)
+            LOG_STRING = "Minimum battery voltage limit set to a value outside of expected range: " + str(value)
             logging.warning(LOG_STRING)
             
     @property
@@ -286,7 +286,7 @@ class Drill:
     Provides a model for Blue Robotics T200 gearbox-reduced ice screw
     """
 
-    def __init__(self, ID_number=0, current_limit=14):
+    def __init__(self, ID_number=0, current_limit=12):
         self.__ID_number = ID_number
         self.__speed = 0
         self.__current_speed = 1

@@ -101,7 +101,9 @@ while not Operations.battery.under_voltage and not Operations.leaksensor.state:
                 try:
                     flt_in = float(arguments[0])
                     Operations.light.brightness = flt_in/100
-                except:
+                except Exception:
+                    logging.info("Failed to set light brightness")
+                    logging.info(traceback.format_exc())
                     pass
 
             elif command in known_commands:  # any other commands will begin as a thread

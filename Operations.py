@@ -250,6 +250,7 @@ def RELEASE(arguments=None):
     OFF()
     Thread(daemon=True, target=DRILL, args=(drill_out,)).start()
     motors[0].auto_release_OVRD = True
+    release_CLA_time = time.time()
     while not stopauto and not surface_confirmed and max(np.array(data.ROT) - np.array(rotations_init)) < max_rotations:
              
         time.sleep(wait_time)
@@ -268,16 +269,16 @@ def RELEASE(arguments=None):
                     Rread = False
                     
                 if (np.any(delta_rotations == 0)) or not Rread: #if either stake is stuck
-                    # attempt to drill in 5 turns (this sometimes helps loosen the ice)
+                    # attempt to drill in 2 turns (this sometimes helps loosen the ice)
                     # alternate between left, right, and both drilling in
                     in_attempts = (in_attempts + 1) % 3
 
                     if in_attempts == 1:
-                        drill_in = [5, 0]
+                        drill_in = [2, 0]
                     elif in_attempts == 2:
-                        drill_in = [0, 5]
+                        drill_in = [0, 2]
                     else:
-                        drill_in = [5, 5]
+                        drill_in = [2, 2]
 
                     OFF() # stop drill out
                     time.sleep(0.5)
@@ -288,7 +289,23 @@ def RELEASE(arguments=None):
                     time.sleep(0.5)
                     Thread(daemon=True, target=DRILL, args=(drill_out,)).start() # resume drill out
                     motors[0].auto_release_OVRD = True
+            
+            try:
+                if time.time() - release_CLA_time > 300:  # every 5 minutes RELEASE is running, increase current limit by 1A
+                    active_current_limit = motors[0].current_limit
+                    if active_current_limit < 30:
+                        CLA(active_current_limit + 1)
+                        logging.info("Increased current limit from " + str(active_current_limit) + "A to " + str(motors[0].current_limit) + "A for release operation")
+                        release_CLA_time = time.time()  # reset timer to allow repeated increases
+            except Exception:
+                logging.info("Failed to increase current limit for release operation")
+                logging.info(traceback.format_exc())
+                pass
+                
         except Exception:
+            logging.info("RELEASE operation failed")
+            logging.info(traceback.format_exc())
+            logging.info("Continuing RELEASE operation...")
             pass
         
         loops = loops+1
@@ -322,6 +339,8 @@ def AR_OVRD(state):
         elif state[0] == 'F' or state == '0':
             motors[0].auto_release_OVRD = False
     except Exception:
+        logging.info("Failed to set auto-release override state")
+        logging.info(traceback.format_exc())
         pass
     
 def AR_RESET(arguments=None):
@@ -449,7 +468,7 @@ def CLA(new_current_limit):
     """ Manually overwrite current limit on motors
 
     Args:
-        set_turns (str): String of a float providing new value for current limit (Amps).
+        new_current_limit (str): String of a float providing new value for current limit (Amps).
     """
     try:
         new_current_limit = float(new_current_limit[0])
