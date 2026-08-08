@@ -403,7 +403,7 @@ class Drill:
             logging.error("Invalid pulse count: %s", str(value))
     
     
-    # ----------------------------------
+    # --- Drill threads ---------------------------------
         
     def update_speed(self):
         """Monitors requested motor speed and updates PWM signal sent to ESCs accordingly
@@ -452,21 +452,24 @@ class Drill:
         pin.pull = Pull.DOWN
         
         while True:
-            time.sleep(1/SAMPLE_FREQUENCY)
-            input = pin.value
-            if input == 0:
-                if integrator > 0:
-                    integrator = integrator - 1
-            elif integrator < MAXIMUM:
-                integrator = integrator + 1
-            if integrator == 0:
-                output = 0
-            elif integrator >= MAXIMUM:
-                output = 1
-                integrator = MAXIMUM
-            if output == 0 and prior_output == 1:
-                self.pulses = self.pulses + 1
-            prior_output = output
+            if abs(self.speed) > 1e-6:  # if motors are running
+                time.sleep(1/SAMPLE_FREQUENCY)
+                input = pin.value
+                if input == 0:
+                    if integrator > 0:
+                        integrator = integrator - 1
+                elif integrator < MAXIMUM:
+                    integrator = integrator + 1
+                if integrator == 0:
+                    output = 0
+                elif integrator >= MAXIMUM:
+                    output = 1
+                    integrator = MAXIMUM
+                if output == 0 and prior_output == 1:
+                    self.pulses = self.pulses + 1
+                prior_output = output
+            else:
+                time.sleep(0.1)
 
     def auto_release_timer(self, release_event):
         """

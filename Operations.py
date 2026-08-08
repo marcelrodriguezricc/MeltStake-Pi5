@@ -128,11 +128,12 @@ def AUTO(deployment_intv_time):
         # wait specified time between drill attempts
         if (time.time()-last_drill_time) > (time_between_drills*60): 
             # try drilling in. 
-            # For both screws this will either do the full 20 rotations or over-current out
+            # For both screws this will either do the full set of rotations or over-current out
             Thread(daemon=True, target=DRILL, args=([rotations_per_drill]*2, )).start()
             last_drill_time = time.time()
-            logging.info("AUTONOMOUS DRILLING")
-
+            logging.info("Starting autonomous drill attempt with "+str(rotations_per_drill)+" rotations per screw")
+    
+    logging.info("Exiting autonomous deployment operation")
 
     OFF()
     if not stopauto: # if we didnt manually stop AUTO, RELEASE from ice
@@ -156,7 +157,7 @@ def RELEASE(arguments=None):
     max_rotations = 500 # maximum number of rotations allowed before exiting RELEASE
     rotations_init = data.ROT
     
-    logging.info("begining RELEASE operation")
+    logging.info("beginning RELEASE operation")
     
     # disable auto-release
     AR_OVRD('T')
@@ -215,6 +216,7 @@ def RELEASE(arguments=None):
                             surface_confirmed_count += 1
                             if surface_confirmed_count >= 3:
                                 surface_confirmed = True
+                                logging.info("Pressure readings indicate the unit is at the surface.")
                                 break
                     else:
                         ms.logwait("Pressure timestamp has not advanced; waiting for fresh reading")
@@ -303,9 +305,8 @@ def RELEASE(arguments=None):
                 pass
                 
         except Exception:
-            logging.info("RELEASE operation failed")
+            logging.info("Error during RELEASE operation. Continuing loop...")
             logging.info(traceback.format_exc())
-            logging.info("Continuing RELEASE operation...")
             pass
         
         loops = loops+1
@@ -407,6 +408,8 @@ def SETROT(set_turns):
         for motor, set_turn in zip(motors, set_turns):
             if set_turn != None:
                 motor.pulses = set_turn
+                
+        logging.info("Rotation tracking set to: "+str([motor.pulses for motor in motors]))
     except Exception as e:
         logging.info("motor rotation tracking adjustment failed")
         logging.info(traceback.format_exc())
@@ -426,6 +429,7 @@ def SETSPD(new_spd):
         flt_spd = flt_spd[0]
         if flt_spd is not None and 0. <= flt_spd <= 1.:
             max_speed = flt_spd
+        logging.info("Motor speed adjustment set to: "+str(max_speed))
     except Exception as e:
         logging.info("motor speed adjustment failed")
         logging.info(traceback.format_exc())
@@ -475,6 +479,7 @@ def CLA(new_current_limit):
         
         for motor in motors:
             motor.current_limit = new_current_limit
+        logging.info("Current limit set to: "+str(new_current_limit)+"A")
     except Exception as e:
         logging.info("Current limit adjust failed")
         logging.info(traceback.format_exc())
