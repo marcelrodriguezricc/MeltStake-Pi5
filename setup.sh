@@ -204,107 +204,122 @@ log "Static IP addresses will use XX = ${SUFFIX}"
 log "Cleaning up any existing NetworkManager WiFi profiles"
 
 # Remove redundancies before creating new connections
-cleanup_con "wifi-mixz"
-cleanup_con "wifi-ScienceShare"
-cleanup_con "wifi-SDA-SNOWLINK"
-cleanup_con "ap-meltStake${SUFFIX}"
-cleanup_con "wifi-meltStake${SUFFIX}"
-cleanup_con "netplan-wlan0-mixz"
+# cleanup_con "wifi-mixz"
+# cleanup_con "wifi-ScienceShare"
+# cleanup_con "wifi-SDA-SNOWLINK"
+# cleanup_con "ap-meltStake${SUFFIX}"
+# cleanup_con "wifi-meltStake${SUFFIX}"
 
-# Create Network Manager WiFi profile for mixz 
-log "Creating WiFi profile: wifi-mixz (SSID: mixz)"
-sudo nmcli con add type wifi ifname wlan0 \
-  con-name "wifi-mixz" \
-  ssid "mixz" >/dev/null 2>&1 \
-  && ok "Created connection: wifi-mixz" \
-  || error "Failed to create connection: wifi-mixz"
+# Create Network Manager WiFi profile for mixz
+if nmcli -t -f NAME con show | grep -Fxq "wifi-mixz"; then
+  log "NetworkManager connection already exists: wifi-mixz (skipping creation)"
+else
+  log "Creating WiFi profile: wifi-mixz (SSID: mixz)"
+  sudo nmcli con add type wifi ifname wlan0 \
+    con-name "wifi-mixz" \
+    ssid "mixz" >/dev/null 2>&1 \
+    && ok "Created connection: wifi-mixz" \
+    || error "Failed to create connection: wifi-mixz"
 
-# Set password for mixz
-log "Setting WPA2 password for wifi-mixz"
-sudo nmcli con mod "wifi-mixz" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "chi10eps9"
+  # Set password for mixz
+  log "Setting WPA2 password for wifi-mixz"
+  sudo nmcli con mod "wifi-mixz" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "chi10eps9"
 
-# Assign static IP for mixz
-log "Assigning static IP 10.0.1.1${SUFFIX}/24 to wifi-mixz"
-sudo nmcli con mod "wifi-mixz" ipv4.method manual \
-  ipv4.addresses "10.0.1.1${SUFFIX}/24" \
-  ipv4.gateway "10.0.1.1" \
-  ipv4.dns "10.0.1.1" \
-  ipv4.ignore-auto-dns yes \
-  && ok "Static IP configured for wifi-mixz"
+  # Assign static IP for mixz
+  log "Assigning static IP 10.0.1.1${SUFFIX}/24 to wifi-mixz"
+  sudo nmcli con mod "wifi-mixz" ipv4.method manual \
+    ipv4.addresses "10.0.1.1${SUFFIX}/24" \
+    ipv4.gateway "10.0.1.1" \
+    ipv4.dns "10.0.1.1" \
+    ipv4.ignore-auto-dns yes \
+    && ok "Static IP configured for wifi-mixz"
 
-# Enable autoconnect and set priority for mixz (30)
-log "Enabling autoconnect (priority 30) for wifi-mixz"
-sudo nmcli con mod "wifi-mixz" connection.autoconnect yes connection.autoconnect-priority 30
+  # Enable autoconnect and set priority for mixz (30)
+  log "Enabling autoconnect (priority 30) for wifi-mixz"
+  sudo nmcli con mod "wifi-mixz" connection.autoconnect yes connection.autoconnect-priority 30
+fi
 
-# Create Network Manager WiFi profile for ScienceShare
-log "Creating WiFi profile: wifi-ScienceShare (SSID: ScienceShare)"
-sudo nmcli con add type wifi ifname wlan0 \
-  con-name "wifi-ScienceShare" \
-  ssid "ScienceShare" >/dev/null 2>&1 \
-  && ok "Created connection: wifi-ScienceShare" \
-  || error "Failed to create connection: wifi-ScienceShare"
+if nmcli -t -f NAME con show | grep -Fxq "wifi-ScienceShare"; then
+  log "NetworkManager connection already exists: wifi-ScienceShare (skipping creation)"
+else
+  # Create Network Manager WiFi profile for ScienceShare
+  log "Creating WiFi profile: wifi-ScienceShare (SSID: ScienceShare)"
+  sudo nmcli con add type wifi ifname wlan0 \
+    con-name "wifi-ScienceShare" \
+    ssid "ScienceShare" >/dev/null 2>&1 \
+    && ok "Created connection: wifi-ScienceShare" \
+    || error "Failed to create connection: wifi-ScienceShare"
 
-# Set password for ScienceShare
-log "Setting WPA2 password for wifi-ScienceShare"
-sudo nmcli con mod "wifi-ScienceShare" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "SwimRobotSwim"
+  # Set password for ScienceShare
+  log "Setting WPA2 password for wifi-ScienceShare"
+  sudo nmcli con mod "wifi-ScienceShare" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "SwimRobotSwim"
 
-# Assign static IP for ScienceShare
-log "Assigning static IP 192.168.0.1${SUFFIX}/24 to wifi-ScienceShare"
-sudo nmcli con mod "wifi-ScienceShare" ipv4.method manual \
-  ipv4.addresses "192.168.0.1${SUFFIX}/24" \
-  ipv4.gateway "192.168.0.1" \
-  ipv4.dns "192.168.0.1" \
-  ipv4.ignore-auto-dns yes \
-  && ok "Static IP configured for wifi-ScienceShare"
+  # Assign static IP for ScienceShare
+  log "Assigning static IP 192.168.0.1${SUFFIX}/24 to wifi-ScienceShare"
+  sudo nmcli con mod "wifi-ScienceShare" ipv4.method manual \
+    ipv4.addresses "192.168.0.1${SUFFIX}/24" \
+    ipv4.gateway "192.168.0.1" \
+    ipv4.dns "192.168.0.1" \
+    ipv4.ignore-auto-dns yes \
+    && ok "Static IP configured for wifi-ScienceShare"
 
-# Enable autoconnect and set priority for ScienceShare (20)
-log "Enabling autoconnect (priority 20) for wifi-ScienceShare"
-sudo nmcli con mod "wifi-ScienceShare" connection.autoconnect yes connection.autoconnect-priority 20
+  # Enable autoconnect and set priority for ScienceShare (20)
+  log "Enabling autoconnect (priority 20) for wifi-ScienceShare"
+  sudo nmcli con mod "wifi-ScienceShare" connection.autoconnect yes connection.autoconnect-priority 20
+fi
 
-# Create Network Manager WiFi profile for SDA-SNOWLINK
-log "Creating WiFi profile: wifi-SDA-SNOWLINK (SSID: SDA-SNOWLINK)"
-sudo nmcli con add type wifi ifname wlan0 \
-  con-name "wifi-SDA-SNOWLINK" \
-  ssid "SDA-SNOWLINK" >/dev/null 2>&1 \
-  && ok "Created connection: wifi-SDA-SNOWLINK" \
-  || error "Failed to create connection: wifi-SDA-SNOWLINK"
+if nmcli -t -f NAME con show | grep -Fxq "wifi-SDA-SNOWLINK"; then
+  log "NetworkManager connection already exists: wifi-SDA-SNOWLINK (skipping creation)"
+else
+  # Create Network Manager WiFi profile for SDA-SNOWLINK
+  log "Creating WiFi profile: wifi-SDA-SNOWLINK (SSID: SDA-SNOWLINK)"
+  sudo nmcli con add type wifi ifname wlan0 \
+    con-name "wifi-SDA-SNOWLINK" \
+    ssid "SDA-SNOWLINK" >/dev/null 2>&1 \
+    && ok "Created connection: wifi-SDA-SNOWLINK" \
+    || error "Failed to create connection: wifi-SDA-SNOWLINK"
 
-# Set password for SDA-SNOWLINK
-log "Setting WPA2 password for wifi-SDA-SNOWLINK"
-sudo nmcli con mod "wifi-SDA-SNOWLINK" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "snowlink2023"
+  # Set password for SDA-SNOWLINK
+  log "Setting WPA2 password for wifi-SDA-SNOWLINK"
+  sudo nmcli con mod "wifi-SDA-SNOWLINK" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "snowlink2023"
 
-# Use DHCP (no static IP)
-log "Configuring wifi-SDA-SNOWLINK to use DHCP"
-sudo nmcli con mod "wifi-SDA-SNOWLINK" \
-  ipv4.method auto \
-  ipv4.ignore-auto-dns no \
-  && ok "DHCP configured for wifi-SDA-SNOWLINK"
+  # Use DHCP (no static IP)
+  log "Configuring wifi-SDA-SNOWLINK to use DHCP"
+  sudo nmcli con mod "wifi-SDA-SNOWLINK" \
+    ipv4.method auto \
+    ipv4.ignore-auto-dns no \
+    && ok "DHCP configured for wifi-SDA-SNOWLINK"
 
-# Enable autoconnect and set priority for SDA-SNOWLINK (10)
-log "Enabling autoconnect (priority 10) for wifi-SDA-SNOWLINK"
-sudo nmcli con mod "wifi-SDA-SNOWLINK" connection.autoconnect yes connection.autoconnect-priority 10
+  # Enable autoconnect and set priority for SDA-SNOWLINK (10)
+  log "Enabling autoconnect (priority 10) for wifi-SDA-SNOWLINK"
+  sudo nmcli con mod "wifi-SDA-SNOWLINK" connection.autoconnect yes connection.autoconnect-priority 10
+fi
 
-# Configure fallback AccessPoint meltstakeXX
-log "Configuring fallback Access Point: meltStake${SUFFIX}"
-log "This AP will activate only if no known WiFi is available"
-sudo nmcli con add type wifi ifname wlan0 \
-  con-name "ap-meltStake${SUFFIX}" \
-  ssid "meltStake${SUFFIX}" \
-  autoconnect yes \
-  connection.autoconnect-priority -10 \
-  && ok "Created fallback AP profile: ap-meltStake${SUFFIX}"
+if nmcli -t -f NAME con show | grep -Fxq "ap-meltStake${SUFFIX}"; then
+  log "NetworkManager connection already exists: ap-meltStake${SUFFIX} (skipping creation)"
+else
+  # Configure fallback AccessPoint meltstakeXX
+  log "Configuring fallback Access Point: meltStake${SUFFIX}"
+  log "This AP will activate only if no known WiFi is available"
+  sudo nmcli con add type wifi ifname wlan0 \
+    con-name "ap-meltStake${SUFFIX}" \
+    ssid "meltStake${SUFFIX}" \
+    autoconnect yes \
+    connection.autoconnect-priority -10 \
+    && ok "Created fallback AP profile: ap-meltStake${SUFFIX}"
 
-# Modify connection to Access Point (AP) mode, 2.4 GHz band channel 6, with password: raspberry
-log "Setting AP mode (2.4 GHz, channel 6) and WPA2 password"
-sudo nmcli con mod "ap-meltStake${SUFFIX}" \
-  802-11-wireless.mode ap \
-  802-11-wireless.band bg \
-  802-11-wireless.channel 6 \
-  wifi-sec.key-mgmt wpa-psk \
-  wifi-sec.psk "raspberry" \
-  ipv4.method shared \
-  ipv6.method disabled \
-  && ok "Access Point configuration complete"
+  # Modify connection to Access Point (AP) mode, 2.4 GHz band channel 6, with password: raspberry
+  log "Setting AP mode (2.4 GHz, channel 6) and WPA2 password"
+  sudo nmcli con mod "ap-meltStake${SUFFIX}" \
+    802-11-wireless.mode ap \
+    802-11-wireless.band bg \
+    802-11-wireless.channel 6 \
+    wifi-sec.key-mgmt wpa-psk \
+    wifi-sec.psk "raspberry" \
+    ipv4.method shared \
+    ipv6.method disabled \
+    && ok "Access Point configuration complete"
+fi
 
 # End of section summary for WiFi & static IP configuration
 echo
