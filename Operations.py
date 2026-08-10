@@ -168,30 +168,44 @@ def RELEASE(arguments=None):
     surface_confirmed = False
     surface_confirmed_count = 0
 
-    def read_pressure_sample(max_lines=100, freshness_window_seconds=5.0):
-        """Return the latest pressure sample from the pressure log file if it is fresh."""
+    def read_pressure_sample(freshness_window_seconds=5.0):
+        """Return the latest fresh pressure sample from the pressure log."""
         pressure_file = "/home/pi/data/Pressure.dat"
-        if not os.path.exists(pressure_file):
-            return None
 
         try:
-            with open(pressure_file, "r") as fh:
-                lines = [line.strip() for line in fh if line.strip()]
-        except Exception:
+            with open(pressure_file, "rb") as fh:
+                fh.seek(0, os.SEEK_END)
+
+                # Read only the last ~8 KB.
+                size = fh.tell()
+                fh.seek(max(0, size - 8192))
+
+                lines = fh.read().decode("utf-8", errors="ignore").splitlines()
+
+        except (OSError, IOError):
             return None
 
         now = time.time()
-        for line in reversed(lines[-max_lines:]):
+
+        for line in reversed(lines):
             try:
-                parts = line.split('\t')
+                parts = line.split("\t")
                 if len(parts) < 2:
                     continue
-                timestamp = datetime.fromisoformat(parts[0].replace("Z", "+00:00"))
+
+                timestamp = datetime.fromisoformat(
+                    parts[0].replace("Z", "+00:00")
+                )
                 depth = float(parts[1])
-                if np.isfinite(depth) and (now - timestamp.timestamp()) <= freshness_window_seconds:
+
+                if np.isfinite(depth) and (
+                    now - timestamp.timestamp() <= freshness_window_seconds
+                ):
                     return timestamp, depth
-            except Exception:
+
+            except (ValueError, IndexError):
                 continue
+
         return None
 
     def monitor_depth():
